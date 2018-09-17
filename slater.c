@@ -1,7 +1,9 @@
+#include "slater.h"
 int p_step(int n_s, int n_p, int *m_p) {
   int p = gsl_sf_choose(n_s, n_p);
   for (int i = 0; i < n_p; i++) {
     p -= n_choose_k(n_s-m_p[i], n_p - i);
+  }
   return p;
 }
 void orbitals_from_p(int p, int n_s, int n_p, int* orbitals) {
@@ -16,6 +18,7 @@ void orbitals_from_p(int p, int n_s, int n_p, int* orbitals) {
         break;
       }
     }
+  }
   return;
 }
 
@@ -41,11 +44,13 @@ void generate_single_particle_states() {
   int* last_state_p = (int*)malloc(sizeof(int)*n_p);
   for (int i = 0; i < n_p; i++) {
     last_state_p[i] = n_s - (n_p - i - 1);
+  }
   int n_sds_p = p_step(n_s, n_p, last_state_p);
   printf("proton SDs: %d\n", n_sds_p);
   int* last_state_n = (int*)malloc(sizeof(int)*n_n);
   for (int i = 0; i < n_n; i++) {
     last_state_n[i] = n_s - (n_n - i - 1);
+  }
   int n_sds_n = p_step(n_s, n_n, last_state_n);
   printf("neutron SDs: %d\n", n_sds_n);
   printf("Bin: %d\n", a_op(n_s, n_p, 1, 2));
@@ -65,6 +70,7 @@ int bin_from_p(int n_s, int n_p, int p) {
         break;
       }
     }
+  }
   return bin;
 }
 
@@ -83,6 +89,7 @@ int bin_phase_from_p(int n_s, int n_p, int p, int n_op, int* phase) {
         break;
       }
     }
+  }
   return bin;
 }
 

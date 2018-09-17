@@ -1,6 +1,7 @@
+#include "av18.h"
 double woods_saxon(double r) {
   double a = 0.2; // [fm]
-  double r_0 = 0.5 // [fm]
+  double r_0 = 0.5; // [fm]
   double w = 1.0 + exp((r - r_0)/a);
   w = 1.0/w;
   
@@ -265,28 +266,28 @@ double v_av18_ci_01(double r) {
 }
  
 double v_av18_c(double r) {
-  double v = 9.0*v_av18_ci_11(r) + 3.0*v_av18_c_10_np(r) + 3.0*v_av18_ci_01(r) + v_av18_c_00_np(r);
+  double v = 9.0*v_av18_ci_11(r) + 3.0*v_av18_c_10(r) + 3.0*v_av18_ci_01(r) + v_av18_c_00(r);
   v *= 1.0/16.0;
   
   return v;
 }
 
 double v_av18_tau(double r) {
-  double v = 3.0*v_av18_ci_11(r) - 3.0*v_av18_c_10_no(r) + v_av18_ci_01(r) - v_av18_c_00_np(r);
+  double v = 3.0*v_av18_ci_11(r) - 3.0*v_av18_c_10(r) + v_av18_ci_01(r) - v_av18_c_00(r);
   v *= 1.0/16.0;
 
   return v;
 }
 
 double v_av18_sigma(double r) {
-   double v = 3.0*v_av18_ci_11(r) + v_av18_c_10_no(r) -3.0*v_av18_ci_01(r) - v_av18_c_00_np(r);
+   double v = 3.0*v_av18_ci_11(r) + v_av18_c_10(r) -3.0*v_av18_ci_01(r) - v_av18_c_00(r);
   v *= 1.0/16.0;
 
   return v;
 }
 
 double v_av18_sigma_tau(double r) {
-   double v = v_av18_ci_11(r) - v_av18_c_10_no(r) - v_av18_ci_01(r) + v_av18_c_00_np(r);
+   double v = v_av18_ci_11(r) - v_av18_c_10(r) - v_av18_ci_01(r) + v_av18_c_00(r);
   v *= 1.0/16.0;
 
   return v;
@@ -391,7 +392,7 @@ double v_av18_sigma_cap_t(double r) {
 }
 
 double v_av18_t_cap_t(double r) {
-  double v = 0.5*(v_av18_t_11_pp(r) + v_ab18_t_11_nn(r)) - v_av18_t_11_np(r);
+  double v = 0.5*(v_av18_t_11(r) + v_av18_t_11(r)) - v_av18_t_11(r);
   v *= 1.0/6.0;
 
   return v;

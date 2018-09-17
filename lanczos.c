@@ -14,6 +14,7 @@ double characteristic_polynomial(double lambda, double *alpha, double *beta, int
     if (q2 == 0.0) {q2 = delta;}
     q1 = (alpha[k] - lambda) - pow(beta[k-1], 2.0)/q2;
     if (q1 < 0) {*sign_diff += 1;}
+  }
   return q1;
 }
 void lanczos_eigenvalues(double *h, int dim, int n_iter) {
@@ -88,12 +89,14 @@ void lanczos_eigenvalues(double *h, int dim, int n_iter) {
       }
     }
     printf("k: %d a:%g b:%g\n", k, a, b);
+  }
   return;
 }
 
 void get_orthogonal_vector(double *h_tri, double *v, int dim, int n_done) {
   for (int i = 0; i < dim; i++) {
     v[i] = 0.0;
+  }
   v[5] = 1.0;
   for (int j = 0; j < n_done; j++) {
     double proj = 0.0;
@@ -103,6 +106,7 @@ void get_orthogonal_vector(double *h_tri, double *v, int dim, int n_done) {
     for (int i = 0; i < dim; i++) {
       v[i] -= proj*h_tri[j*dim + i];
     }
+  }
   return;
 }
 
@@ -112,6 +116,7 @@ void square_matrix_times_vector(double* mat, double *vec, double *result, int di
     for (int j = 0; j < dim; j++) {
       result[i] += mat[i*dim + j]*vec[j];
     }
+  }
   return;
 }
 
@@ -119,18 +124,21 @@ double vector_dot_product(double* v1, double* v2, int dim) {
   double dot = 0.0;
   for (int i = 0; i < dim; i++) {
     dot += v1[i]*v2[i];
+  }
   return dot;
 }
 
 void vector_difference(double *v1, double *v2, double *v3, int dim) {
   for (int i = 0; i < dim; i++) {
     v3[i] = v1[i] - v2[i];
+  }
   return;
 }
 
 void vector_times_scalar(double *v1, double c1, int dim) {
   for (int i = 0; i < dim; i++) {
     v1[i] *= c1;
+  }
   return;
 }
 
@@ -144,10 +152,12 @@ void lanczos(double* h, double* alpha, double* beta, int dim, int n_iter) {
   r = gsl_rng_alloc(T);
   for (int i = 0; i < dim; i++) {
     vi[i] = gsl_ran_gaussian(r, 1.0);
+  }
   double norm = sqrt(vector_dot_product(vi, vi, dim));
   for (int i = 0; i < dim; i++) {
     vi[i] /= norm;
     h_tri[i] = vi[i];
+  }
   double *wi = (double*) malloc(sizeof(double)*dim);
   square_matrix_times_vector(h, vi, wi, dim);
   alpha[0] = vector_dot_product(vi, wi, dim);
@@ -189,8 +199,6 @@ void lanczos(double* h, double* alpha, double* beta, int dim, int n_iter) {
         wi[j] -= proj*h_tri[k*dim + j];
       }
     }
-  for (int i = 0; i < n_iter-1; i++) {
-    printf("%g, %g\n", alpha[i], beta[i]);
-  printf("%g\n", alpha[n_iter-1]);
+  }
   return;
 }
