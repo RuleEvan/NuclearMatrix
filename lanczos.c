@@ -24,6 +24,7 @@ void lanczos_eigenvalues(double *h, int dim, int n_iter) {
   printf("Performing Lanczos tri-diagonalization...\n"); 
   lanczos(h, alpha, beta, dim, n_iter);
   printf("Done.\n");
+  printf("Computing eigenvalues...\n");
   for (int k = 1; k <= n_iter; k++) {
     double b = alpha[0] + abs(beta[0]);
     for (int j = 1; j < n_iter; j++) {
@@ -68,7 +69,9 @@ void lanczos_eigenvalues(double *h, int dim, int n_iter) {
         lambda_a = lambda_mid;
         a = mid;
       }
+      if (k_min == k_max) {break;}
     }
+    
     if (lambda_mid == 0) {
       printf("Eigenvalue exact: %g\n", b);
       continue;

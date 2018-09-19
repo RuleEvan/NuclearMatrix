@@ -8,7 +8,16 @@ double compute_matrix_element_TT(int iv);
 double compute_matrix_element_M_0();
 double compute_matrix_element();
 double matrix_element_sigma_dot_sigma(double s, double ms, double t, double sp, double msp, double tp);
-double compute_matrix_element_av18(int n1p, int l1p, int n2p, int l2p, int lambdap, int mup, int sp, int msp, int tp, int mtp, int n1, int l1, int n2, int l2, int lambda, int mu, int s, int ms, int t, int mt);
-double compute_matrix_element_c(int n1p, int l1p, int n2p, int l2p, int lambdap, int mup, int sp, int msp, int tp, int mtp, int n1, int l1, int n2, int l2, int lambda, int mu, int s, int ms, int t, int mt);
+double compute_matrix_element_av18(int n1p, double j1p, int n2p, double j2p, int j12p, int t12p, int n1, double j1, int n2, double j2, int j12, int t12);
+double compute_matrix_element_c(int iv, int n1p, double j1p, int n2p, double j2p, int j12p, int t12p, int n1, double j1, int n2, double j2, int j12, int t12);
+double compute_matrix_element_tau(int iv, int n1p, double j1p, int n2p, double j2p, int j12p, int t12p, int n1, double j1, int n2, double j2, int j12, int t12);
+double compute_matrix_element_sigma(int iv, int n1p, double j1p, int n2p, double j2p, int j12p, int t12p, int n1, double j1, int n2, double j2, int j12, int t12);
+double compute_matrix_element_sigma_tau(int iv, int n1p, double j1p, int n2p, double j2p, int j12p, int t12p, int n1, double j1, int n2, double j2, int j12, int t12);
+double compute_matrix_element_ls(int iv, int n1p, double j1p, int n2p, double j2p, int j12p, int t12p, int n1, double j1, int n2, double j2, int j12, int t12);
+double compute_matrix_element_ls_tau(int iv, int n1p, double j1p, int n2p, double j2p, int j12p, int t12p, int n1, double j1, int n2, double j2, int j12, int t12);
+double compute_matrix_element_l2(int iv, int n1p, double j1p, int n2p, double j2p, int j12p, int t12p, int n1, double j1, int n2, double j2, int j12, int t12);
+double compute_matrix_element_l2_tau(int iv, int n1p, double j1p, int n2p, double j2p, int j12p, int t12p, int n1, double j1, int n2, double j2, int j12, int t12);
+double compute_matrix_element_l2_sigma(int iv, int n1p, double j1p, int n2p, double j2p, int j12p, int t12p, int n1, double j1, int n2, double j2, int j12, int t12);
+double compute_matrix_element_l2_sigma_tau(int iv, int n1p, double j1p, int n2p, double j2p, int j12p, int t12p, int n1, double j1, int n2, double j2, int j12, int t12);
 
 #endif
