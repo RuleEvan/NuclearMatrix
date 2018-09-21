@@ -166,3 +166,90 @@ double v_pion_NN_g2(double r) {
   return v;
 }
 
+double g_vector(double q_sq) {
+  double g = pow(1.0 + q_sq/pow(LAMBDA_V, 2.0), -2.0);
+
+  return g;
+}
+
+double g_axial(double q_sq) {
+  double g = pow(G_AXIAL, 2.0)*pow(1.0 + s_sq/pow(LAMBDA_A, 2.0), -2.0);
+
+  return g;
+}
+
+double g_magnetic(double q_sq) {
+  double g = (1.0 + KAPPA_1)*g_vector(q_sq);
+ 
+  return g;
+}
+
+double g_pseudo(double q_sq) {
+  double g = -2.0*M_NEUTRON*g_axial(q_sq)/(q_sq + pow(M_PION, 2.0));
+
+  return g;
+}
+
+double h_AA_GT(double r) {
+  r *= B_OSC;
+  double r_a = R_NUC*pow(A_NUC, 1.0/3.0);
+  double v = r_a/r*pow(G_AXIAL, 2.0);
+ 
+  return v;
+}
+
+double h_AA_T(double r) {
+  r *= B_OSC;
+  double r_a = R_NUC*pow(A_NUC, 1.0/3.0);
+  double v = r_a/(2*r)*pow(G_AXIAL, 2.0);
+ 
+  return v;
+}
+
+double h_AP_GT(double r) {
+  r *= B_OSC;
+  double r_a = R_NUC*pow(A_NUC, 1.0/3.0);
+  double x = r*PION_MASS*0.0050677;
+  double v = -2*r_a/(3*r)*pow(G_AXIAL, 2.0)*exp(-x);
+
+  return v;
+}
+
+double h_AP_T(double r) {
+  r *= B_OSC;
+  double r_a = R_NUC*pow(A_NUC, 1.0/3.0);
+  double x = r*PION_MASS*0.0050677;
+  double v = r_a/(r*x*x)*pow(G_AXIAL, 2.0)*(2.0/3.0)*exp(-x);
+  v *= (-3.0 + 3*exp(x) - 3*x - x*x);
+
+  return v;
+}
+
+double h_PP_GT(double r) {
+  r *= B_OSC;
+  double r_a = R_NUC*pow(A_NUC, 1.0/3.0);
+  double x = r*PION_MASS*0.0050677;
+  double v = -r_a/(6*r)*pow(G_AXIAL, 2.0)*exp(-x);
+  v *= (x-2);
+
+  return v;
+}
+
+double h_PP_T(double r) {
+  r *= B_OSC;
+  double r_a = R_NUC*pow(A_NUC, 1.0/3.0);
+  double x = r*PION_MASS*0.0050677;
+  double v = -r_a/(6*r)*pow(G_AXIAL, 2.0)*exp(-x);
+  v *= (1+x);
+
+  return v;
+}
+
+double h_F(double r) {
+  r *= B_OSC;
+  double r_a = R_NUC*pow(A_NUC, 1.0/3.0);
+  double v = r_a/r*pow(G_AXIAL, 2.0);
+
+  return v;
+}
+

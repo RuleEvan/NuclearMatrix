@@ -90,4 +90,129 @@ double brody_mosh(int n_rel, int l_rel, int n_cm, int l_cm, int l_tot, int n1, i
   return bm;
 }
 
+double compute_radial_matrix_element_scalar(int iv, int n1p, int l1p, int n2p, int l2p, int lambdap, int n1, int l1, int n2, int l2, int lambda, int s, int t) {
+  // Computes the matrix element 
+  // <n1p l1p n2p l2p lambdap| V(r) | n1 l1 n2 l2 lambda>
+  // in terms of Moshinsky brackets and Talmi integrals
+  double mat = 0.0;
+  int max = 2*n1 + 2*n2 + l1 + l2;
+  int maxp = 2*n1p + 2*n2p + l1p + l2p;
+  for (int l_cm = 0; l_cm <= max; l_cm++) {
+    for (int l_rel = 0; l_rel <= max - l_cm; l_rel ++) {
+      double sym = 1.0 + pow(-1.0, l_rel + s + 1 + t);
+      if (sym == 0.0) {continue;}
+      if (pow(-1.0, l_cm + l_rel) != pow(-1.0, l1 + l2)) {continue;}
+      for (int n_cm = 0; n_cm <= (max - l_cm - l_rel)/2; n_cm++) {
+        int n_rel = (max - l_rel - l_cm)/2 - n_cm;
+        int n_relp = n_rel + (maxp - max)/2;
+        if (n_relp < 0) {continue;}
+        double rm = brody_mosh(n_rel, l_rel, n_cm, l_cm, lambda, n1, l1, n2, l2);
+        rm *= brody_mosh(n_relp, l_rel, n_cm, l_cm, lambda, n1p, l1p, n2p, l2p);
+        if (rm == 0.0) {continue;}
+        rm *= sym;
+        rm *= compute_potential(n_rel, n_relp, l_rel, l_rel, iv);
+        mat += rm;
+      }
+    }
+  } 
+
+  return mat;
+}
+
+double compute_radial_matrix_element_l2(int iv, int n1p, int l1p, int n2p, int l2p, int lambdap, int n1, int l1, int n2, int l2, int lambda, int s, int t) {
+  // Computes the matrix element 
+  // <n1p l1p n2p l2p lambdap| vec(l)^2 V(r) | n1 l1 n2 l2 lambda>
+  // in terms of Moshinsky brackets and Talmi integrals
+  double mat = 0.0;
+  int max = 2*n1 + 2*n2 + l1 + l2;
+  int maxp = 2*n1p + 2*n2p + l1p + l2p;
+  for (int l_cm = 0; l_cm <= max; l_cm++) {
+    for (int l_rel = 0; l_rel <= max - l_cm; l_rel ++) {
+      double sym = 1.0 + pow(-1.0, l_rel + s + 1 + t);
+      if (sym == 0.0) {continue;}
+      if (pow(-1.0, l_cm + l_rel) != pow(-1.0, l1 + l2)) {continue;}
+      for (int n_cm = 0; n_cm <= (max - l_cm - l_rel)/2; n_cm++) {
+        int n_rel = (max - l_rel - l_cm)/2 - n_cm;
+        int n_relp = n_rel + (maxp - max)/2;
+        if (n_relp < 0) {continue;}
+        double rm = brody_mosh(n_rel, l_rel, n_cm, l_cm, lambda, n1, l1, n2, l2);
+        rm *= brody_mosh(n_relp, l_rel, n_cm, l_cm, lambda, n1p, l1p, n2p, l2p);
+        if (rm == 0.0) {continue;}
+        rm *= l_rel*(l_rel+1);
+        rm *= sym;
+        rm *= compute_potential(n_rel, n_relp, l_rel, l_rel, iv);
+        mat += rm;
+      }
+    }
+  } 
+
+  return mat;
+}
+
+double compute_radial_matrix_element_spin_orbit(int iv, int n1p, int l1p, int n2p, int l2p, int lambdap, int n1, int l1, int n2, int l2, int lambda, int s, int t) {
+  // Computes the matrix element 
+  // <n1p l1p n2p l2p lambdap| vec(l) V(r) | n1 l1 n2 l2 lambda>
+  // in terms of Moshinsky brackets and Talmi integrals
+  double mat = 0.0;
+  int max = 2*n1 + 2*n2 + l1 + l2;
+  int maxp = 2*n1p + 2*n2p + l1p + l2p;
+  for (int l_cm = 0; l_cm <= max; l_cm++) {
+    for (int l_rel = 0; l_rel <= max - l_cm; l_rel ++) {
+      double sym = 1.0 + pow(-1.0, l_rel + s + 1 + t);
+      if (sym == 0.0) {continue;}
+      if (pow(-1.0, l_cm + l_rel) != pow(-1.0, l1 + l2)) {continue;}
+      for (int n_cm = 0; n_cm <= (max - l_cm - l_rel)/2; n_cm++) {
+        int n_rel = (max - l_rel - l_cm)/2 - n_cm;
+        int n_relp = n_rel + (maxp - max)/2;
+        if (n_relp < 0) {continue;}
+        double rm = brody_mosh(n_rel, l_rel, n_cm, l_cm, lambda, n1, l1, n2, l2);
+        rm *= brody_mosh(n_relp, l_rel, n_cm, l_cm, lambda, n1p, l1p, n2p, l2p);
+        rm *= sqrt(l_rel*(l_rel + 1)*(2*l_rel + 1));
+        rm *= sqrt((2*lambda + 1)*(2*lambdap + 1));
+        rm *= pow(-1.0, l_cm + 1 + l_rel + lambdap)*six_j(l_rel, l_rel, 1, lambda, lambdap, l_cm);
+        if (rm == 0.0) {continue;}
+        rm *= sym;
+        rm *= compute_potential(n_rel, n_relp, l_rel, l_rel, iv);
+        mat += rm;
+      }
+    }
+  } 
+
+  return mat;
+}
+
+
+double compute_radial_matrix_element_y2(int iv, int n1p, int l1p, int n2p, int l2p, int lambdap, int n1, int l1, int n2, int l2, int lambda, int s, int t) {
+  // Computes the matrix element
+  // <n1p l1p n2p l2p lambdap || Y_2 V(r) ||n1 l1 n2 l2 lambda>
+  // in terms of Moshinsky brackets and Talmi integrals
+  int max = 2*n1 + 2*n2 + l1 + l2;
+  int maxp = 2*n1p + 2*n2p + l1p + l2p;
+  double mat = 0.0;
+  for (int l_cm = 0; l_cm <= max; l_cm++) {
+    for (int l_rel = 0; l_rel <= max - l_cm; l_rel ++) {
+      if (pow(-1.0, l_rel + l_cm) != pow(-1.0, l1 + l2)) {continue;}
+      double sym = 1.0 + pow(-1.0, l_rel + s + 1 + t);
+      if (sym == 0.0) {continue;}
+      for (int n_cm = 0; n_cm <= (max - l_cm - l_rel)/2; n_cm++) {
+        int n_rel = (max - l_rel - l_cm)/2 - n_cm;
+        for (int l_relp = l_rel - 2; l_relp <= l_rel + 2; l_relp += 2) {
+          if (l_relp < 0) {continue;}
+          if (pow(-1.0, l_relp + l_cm) != pow(-1.0, l1p + l2p)) {continue;}
+          int n_relp = n_rel + (maxp - max)/2 + (l_rel - l_relp)/2;
+          if (n_relp < 0) {continue;}
+          double rm = brody_mosh(n_rel, l_rel, n_cm, l_cm, lambda, n1, l1, n2, l2);
+          rm *= brody_mosh(n_relp, l_relp, n_cm, l_cm, lambdap, n1p, l1p, n2p, l2p);
+          rm *= sqrt(5/(4*M_PI))*sqrt(2*l_relp + 1)*sqrt(2*lambda + 1)*sqrt(2*lambdap + 1)*clebsch_gordan(l_relp, 2, l_rel, 0, 0, 0)*six_j(l_relp, l_rel, 2, lambda, lambdap, l_cm)*pow(-1.0, l_cm + l_relp + lambda);
+          if (rm == 0.0) {continue;}
+          rm *= sym;
+          rm *= compute_potential(n_rel, n_relp, l_rel, l_relp, iv);
+          mat += rm;
+        }
+      }
+    }
+  }
+
+  return mat;
+}
 

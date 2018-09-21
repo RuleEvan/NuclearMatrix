@@ -37,6 +37,7 @@
 #define NUM_SHELLS 99
 #define POTENTIAL 1
 #define A_FACTOR 9.155 // [MeV] Average nuclear excitation energy
-#define B_OSC 2.927 // [fm] Oscillator parameter (times sqrt(2))
+//#define B_OSC 2.927 // [fm] Oscillator parameter (times sqrt(2))
+#define B_OSC 0.8
 #define COR_FAC 1
 #define PION_MASS 139.57 // [MeV] Charged pion mass
