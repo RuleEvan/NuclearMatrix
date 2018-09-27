@@ -1,4 +1,4 @@
-#include "stdio.h"
+#include <stdio.h>
 #include "math.h"
 #include "stdlib.h"
 #include "stdint.h"
@@ -7,6 +7,9 @@
 #include <gsl/gsl_sf_result.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
+#include <gsl/gsl_spline.h>
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_sf_bessel.h>
 
 #define ALPHA_FS 0.007297352
 #define R_NUC 1.2 // [fm]
@@ -25,6 +28,9 @@
 #define M_W1 80.0 // W1 gauge boson mass [GeV]
 #define M_W2_MIN 0.715 // Minimum W2 gauge boson mass [TeV]
 #define MU 0.6995 // [fm]^-1
+#define KAPPA_1 3.7
+#define LAMBDA_A 1040.0 //[MeV]
+#define LAMBDA_V 850.0 // [MeV]
 
 // Wave Function Parameters
 #define N_PROTON 1

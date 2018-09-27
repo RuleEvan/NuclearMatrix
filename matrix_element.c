@@ -158,6 +158,7 @@ double compute_matrix_element_sigma_tau_plus(int iv) {
   in_file = fopen(DENSITY_FILE, "r");
   double mat = 0.0;
   
+  potential_spline_init(h_AA_GT_q, 0.0001, 10.0, 100);
   for (int i = 0; i < NUM_SHELLS; i++) {
     int in1, in2, ij1, ij2, ij12, it12;
     int in1p, in2p, ij1p, ij2p, ij12p, it12p;
@@ -175,7 +176,6 @@ double compute_matrix_element_sigma_tau_plus(int iv) {
     double j2p = ij2p/2.0;
     double j12p = ij12p/2.0;
     double t12p = it12p/2.0;
-
     int l1 = j1 + 0.5;
     int l2 = j2 + 0.5;
     int l1p = j1p + 0.5;

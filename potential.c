@@ -51,6 +51,7 @@ double talmi_integrand(double q, double p, int iv) {
     double beta = exp(-1.1*pow(B_OSC*q, 2))*(1.0 - 0.68*pow(B_OSC*q,2.0));
     v *= pow(1.0 - beta, 2.0);
   }
+  if (iv == -1) {v *= v_spline(q);}
   if (iv == 1) {
     v *= v_light_limit(q);
   } else if (iv == 2) {
@@ -173,7 +174,7 @@ double g_vector(double q_sq) {
 }
 
 double g_axial(double q_sq) {
-  double g = pow(G_AXIAL, 2.0)*pow(1.0 + s_sq/pow(LAMBDA_A, 2.0), -2.0);
+  double g = pow(G_AXIAL, 2.0)*pow(1.0 + q_sq/pow(LAMBDA_A, 2.0), -2.0);
 
   return g;
 }
@@ -185,16 +186,125 @@ double g_magnetic(double q_sq) {
 }
 
 double g_pseudo(double q_sq) {
-  double g = -2.0*M_NEUTRON*g_axial(q_sq)/(q_sq + pow(M_PION, 2.0));
+  double g = -2.0*M_NEUTRON*g_axial(q_sq)/(q_sq + pow(PION_MASS, 2.0));
 
   return g;
 }
+
+double h_AA_GT_q(double q, double r) {
+  double h = pow(g_axial(q*q), 2.0)/pow(G_AXIAL, 2.0)*gsl_sf_bessel_j0(q*r);
+
+  return h;
+}
+
+double h_AA_T_q(double q, double r) {
+  double h = pow(g_axial(q*q), 2.0)/pow(G_AXIAL, 2.0)*gsl_sf_bessel_j2(q*r);
+
+  return h;
+}
+
+double h_AP_GT_q(double q, double r) {
+  double h = g_pseudo(q*q)/(3*M_NEUTRON*pow(G_AXIAL, 2.0))*g_axial(q*q)*q*q*gsl_sf_bessel_j0(q*r);
+
+  return h;
+}
+
+double h_AP_T_q(double q, double r) {
+  double h = -g_pseudo(q*q)/(3*M_NEUTRON*pow(G_AXIAL, 2.0))*g_axial(q*q)*q*q*gsl_sf_bessel_j2(q*r);
+
+  return h;
+}
+ 
+double h_PP_GT_q(double q, double r) {
+  double h = pow(g_pseudo(q*q), 2.0)*pow(q, 4.0)/(pow(G_AXIAL*M_NEUTRON, 2.0)*12)*gsl_sf_bessel_j0(q*r);
+
+  return h;
+}
+
+double h_PP_T_q(double q, double r) {
+  double h = -pow(g_pseudo(q*q), 2.0)*pow(q, 4.0)/(pow(G_AXIAL*M_NEUTRON, 2.0)*12)*gsl_sf_bessel_j2(q*r);
+
+  return h;
+}
+
+double h_MM_GT_q(double q, double r) {
+  double h = pow(g_magnetic(q*q), 2.0)*pow(q, 2.0)/(pow(G_AXIAL*M_NEUTRON, 2.0)*6)*gsl_sf_bessel_j0(q*r);
+
+  return h;
+}
+
+double h_MM_T_q(double q, double r) {
+  double h = pow(g_magnetic(q*q), 2.0)*pow(q, 2.0)/(pow(G_AXIAL*M_NEUTRON, 2.0)*12)*gsl_sf_bessel_j2(q*r);
+
+  return h;
+}
+
+double h_F_q(double q, double r) {
+  double h = g_vector(q*q)*gsl_sf_bessel_j0(q*r);
+
+  return h;
+}
+
+double h_AA_GT_q_sd(double q, double r) {
+  double h = pow(g_axial(q*q), 2.0)/pow(G_AXIAL, 2.0)*gsl_sf_bessel_j0(q*r)*pow(q/PION_MASS, 2.0);
+
+  return h;
+}
+
+double h_AA_T_q_sd(double q, double r) {
+  double h = pow(g_axial(q*q), 2.0)/pow(G_AXIAL, 2.0)*gsl_sf_bessel_j2(q*r)*pow(q/PION_MASS, 2.0);
+
+  return h;
+}
+
+double h_AP_GT_q_sd(double q, double r) {
+  double h = g_pseudo(q*q)/(3*M_NEUTRON*pow(G_AXIAL, 2.0))*g_axial(q*q)*q*q*gsl_sf_bessel_j0(q*r)*pow(q/PION_MASS, 2.0);
+
+  return h;
+}
+
+double h_AP_T_q_sd(double q, double r) {
+  double h = -g_pseudo(q*q)/(3*M_NEUTRON*pow(G_AXIAL, 2.0))*g_axial(q*q)*q*q*gsl_sf_bessel_j2(q*r)*pow(q/PION_MASS, 2.0);
+
+  return h;
+}
+ 
+double h_PP_GT_q_sd(double q, double r) {
+  double h = pow(g_pseudo(q*q), 2.0)*pow(q, 4.0)/(pow(G_AXIAL*M_NEUTRON, 2.0)*12)*gsl_sf_bessel_j0(q*r)*pow(q/PION_MASS, 2.0);
+
+  return h;
+}
+
+double h_PP_T_q_sd(double q, double r) {
+  double h = -pow(g_pseudo(q*q), 2.0)*pow(q, 4.0)/(pow(G_AXIAL*M_NEUTRON, 2.0)*12)*gsl_sf_bessel_j2(q*r)*pow(q/PION_MASS, 2.0);
+
+  return h;
+}
+
+double h_MM_GT_q_sd(double q, double r) {
+  double h = pow(g_magnetic(q*q), 2.0)*pow(q, 2.0)/(pow(G_AXIAL*M_NEUTRON, 2.0)*6)*gsl_sf_bessel_j0(q*r)*pow(q/PION_MASS, 2.0);
+
+  return h;
+}
+
+double h_MM_T_q_sd(double q, double r) {
+  double h = pow(g_magnetic(q*q), 2.0)*pow(q, 2.0)/(pow(G_AXIAL*M_NEUTRON, 2.0)*12)*gsl_sf_bessel_j2(q*r)*pow(q/PION_MASS, 2.0);
+
+  return h;
+}
+
+double h_F_q_sd(double q, double r) {
+  double h = g_vector(q*q)*gsl_sf_bessel_j0(q*r)*pow(q/PION_MASS, 2.0);
+
+  return h;
+}
+
 
 double h_AA_GT(double r) {
   r *= B_OSC;
   double r_a = R_NUC*pow(A_NUC, 1.0/3.0);
   double v = r_a/r*pow(G_AXIAL, 2.0);
- 
+
   return v;
 }
 
@@ -253,3 +363,29 @@ double h_F(double r) {
   return v;
 }
 
+gsl_interp_accel *potential_acc;
+gsl_spline *potential_spline;
+
+void potential_spline_init(double (*f)(double, double), double r_min, double r_max, int r_steps) {
+  potential_acc = gsl_interp_accel_alloc();
+  potential_spline = gsl_spline_alloc(gsl_interp_cspline, r_steps);
+  printf("Initializing spline\n");
+  double* r_arr = (double*)malloc(sizeof(double)*r_steps);
+  double* v_arr = (double*)malloc(sizeof(double)*r_steps);
+  double dr = (r_max - r_min)/r_steps; 
+  double r_a = R_NUC*pow(A_NUC, 1.0/3.0);
+
+  for (int i = 0; i < r_steps; i++) {
+    double r = r_min + i*dr;
+    r_arr[i] = r;
+    v_arr[i] = 2.0*r_a/M_PI*Romberg2Vars(f, r_min, r_max, r, pow(10, -4));
+  }
+  gsl_spline_init(potential_spline, r_arr, v_arr, r_steps);
+  
+  return;
+}
+   
+double v_spline(double r) {
+  double v = gsl_spline_eval(potential_spline, r, potential_acc);
+  return v;
+} 

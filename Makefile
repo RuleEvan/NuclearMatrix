@@ -3,8 +3,8 @@ CFLAGS=-c -Wall -lm -ldl
 
 all: nuclear
 
-nuclear: main.o angular.o romberg.o phase_space.o brody.o av18.o potential.o matrix_element.o lanczos.o slater.o 
-	$(CC) main.o angular.o romberg.o phase_space.o brody.o av18.o potential.o matrix_element.o lanczos.o slater.o -o nuclear -lm -ldl -lgsl -lgslcblas
+nuclear: main.o angular.o romberg.o phase_space.o potential.o brody.o av18.o matrix_element.o lanczos.o slater.o wave_function.o 
+	$(CC) main.o angular.o romberg.o phase_space.o potential.o brody.o av18.o matrix_element.o lanczos.o slater.o wave_function.o -o nuclear -lm -ldl -lgsl -lgslcblas
 
 main.o: main.c
 	$(CC) $(CFLAGS) main.c
@@ -35,6 +35,9 @@ romberg.o: romberg.c
 
 angular.o: angular.c
 	$(CC) $(CFLAGS) angular.c
+
+wave_function.o: wave_function.c
+	$(CC) $(CFLAGS) wave_function.c
 
 clean:
 	rm -rf *.o nuclear
