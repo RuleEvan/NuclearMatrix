@@ -11,6 +11,10 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_sf_bessel.h>
 
+#define R_SPL_MIN 0.0001
+#define R_SPL_MAX 100.0
+#define R_SPL_STEPS 10000
+
 #define ALPHA_FS 0.007297352
 #define R_NUC 1.2 // [fm]
 #define A_NUC 76 // Atomic Mass

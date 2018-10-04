@@ -20,6 +20,15 @@ void generate_wave_function() {
   double e_shift, c_jsq, c_tsq; 
   fscanf(in_file, "%d %d %d %d %d %lf %lf %lf\n", &np, &nn, &mval, &ipar, &n_pre, &e_shift, &c_jsq, &c_tsq);
   printf("%g\n", e_shift); 
+  double xxcm;
+  fscanf(in_file, "%lf\n", &xxcm);
+  int *inph = (int*) malloc(sizeof(int)*3);
+  for (int i = 0; i < 3; i++) {
+    fscanf(in_file, "%d ", &inph[i]);
+  }
+  int itmax, nkeep, isaveb, istop9, isave4, iexp, itimer, ibasis, icoul, itcon;
+  fscanf(in_file, "%d %d %d %d %d %d %d %d %d %d\n", &itmax, &nkeep, &isaveb, &istop9, &isave4, &iexp, &itimer, &ibasis, &icoul, &itcon);
+  
   fclose(in_file);
   
 }
