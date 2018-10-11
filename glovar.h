@@ -13,8 +13,10 @@
 
 #define R_SPL_MIN 0.0001
 #define R_SPL_MAX 100.0
-#define R_SPL_STEPS 10000
+#define R_SPL_STEPS 1000
 
+#define HIGGS_VEV 246.0 // [GeV]
+#define V_UD 0.97427
 #define ALPHA_FS 0.007297352
 #define R_NUC 1.2 // [fm]
 #define A_NUC 76 // Atomic Mass
@@ -27,6 +29,9 @@
 #define MAX(a,b) ((a) > (b) ? (a):(b))
 #define XI_MIX_0 0.0016 // Mean mixing angle
 #define G_AXIAL 1.275 // Axial coupling
+#define G_MAGNETIC 4.7
+#define G_TENSOR 0.99
+#define G_VECTOR 1.0
 #define E_HADRON 1 // Hadronization scale [GeV] 
 #define DELTA_SUPP 1.0/30.0 // Suppression factor
 #define M_W1 80.0 // W1 gauge boson mass [GeV]

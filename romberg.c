@@ -54,7 +54,7 @@ double RombergIntegrator(double (*f)(double), double a, double b, double tol) {
  double Romberg2Vars(double (*f)(double, double), double a, double b, double r, double tol) {
   // Numerical integrator
   int maxiter = 20;
-  int maxj = 6;
+  int maxj = 5;
   float h, g0, fourj, gmax, error, g1, romb;
   float g[maxj + 1];
   int nint;

@@ -1,12 +1,38 @@
 #include "slater.h"
+
 int p_step(int n_s, int n_p, int *m_p) {
+/* Compute the p-coefficient (see Whitehead) associated with a
+   given Slater determinant
+
+  Inputs(s):
+    int n_s: number of states
+    int n_p: number of particles
+    int array m_p: for each particle, specifies the m-value 
+                   of the orbital that it occupies
+  Output(s): 
+    int p: p-coefficient of the given Slater determinant
+*/
   int p = gsl_sf_choose(n_s, n_p);
   for (int i = 0; i < n_p; i++) {
     p -= n_choose_k(n_s-m_p[i], n_p - i);
   }
   return p;
 }
+
 void orbitals_from_p(int p, int n_s, int n_p, int* orbitals) {
+/* Given a p-coefficient, reconstruct the orbitals occupied in
+   the corresponding Slater determinant
+
+  Input(s):
+    int p: p-coefficient
+    int n_s: number of states
+    int n_p: number of particles
+    int array orbitals: array to be populated with orbital number
+                        of each particle
+
+  Output(s): None
+
+*/
   int q = n_choose_k(n_s, n_p) - p;
   int j_min = 1;
   for (int k = 0; k < n_p; k++) {
@@ -20,6 +46,25 @@ void orbitals_from_p(int p, int n_s, int n_p, int* orbitals) {
     }
   }
   return;
+}
+
+void orbitals_from_binary(int n_s, int n_p, int b, int* orbitals) {
+  int j = n_p - 1;
+  for (int i = 0; i < n_s; i++) {
+    if (b % (int) pow(2, i + 1) != 0) { 
+      orbitals[j] = n_s - i;
+      b -= pow(2, i);
+      j--;
+    }
+  }
+  return;
+}
+
+int p_from_binary(int n_s, int n_p, int b) {
+  int* orbitals = (int*) malloc(sizeof(int)*n_p);
+  orbitals_from_binary(n_s, n_p, b, orbitals);
+  int p = p_step(n_s, n_p, orbitals);
+  return p;
 }
 
 unsigned int count_set_bits(unsigned int n) {
@@ -159,7 +204,7 @@ int bin_phase_from_p(int n_s, int n_p, int p, int n_op, int* phase) {
         bin += pow(2, n_s - j);
         q -= n_choose_k(n_s - j, n_p  - k);
         j_min = j+1;
-        if (j < n_op) {*phase *= 1;}
+        if (j < n_op) {*phase *= -1;}
         break;
       }
     }
@@ -167,24 +212,27 @@ int bin_phase_from_p(int n_s, int n_p, int p, int n_op, int* phase) {
   return bin;
 }
 
-int a_op(int n_s, int n_p, int p, int n_op) {
-  int phase;
-  phase = 1;
-  unsigned int bin = bin_phase_from_p(n_s, n_p, p, n_op, &phase);
+int a_op(int n_s, int n_p, int p, int n_op, int *phase) {
+  *phase = 1;
+  unsigned int bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
   unsigned int check = pow(2, n_s - n_op);
   if (!(bin & check)) {return 0;}
-  bin -= (bin & check);
-  printf("bin: %d phase: %d\n", bin, phase);
-  return bin;
+  bin -= check;
+  int pp = p_from_binary(n_s, n_p - 1, bin);
+  return pp;
 }
 
-int a_dag_op(int n_s, int n_p, int p, int n_op) {
-  unsigned int bin = bin_from_p(n_s, n_p, p);
+int a_dag_op(int n_s, int n_p, int p, int n_op, int *phase) {
+  *phase = 1;
+  unsigned int bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
   unsigned int check = pow(2, n_s - n_op);
   if (bin & check) {return 0;}
   bin += check;
-  return bin;
+  int pp = p_from_binary(n_s, n_p + 1, bin);
+  return pp;
 }
+
+
 
 int n_choose_k(int n, int k) {
   int c = 0;
