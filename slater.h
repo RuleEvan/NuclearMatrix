@@ -14,4 +14,5 @@ void initialize_orbitals(int* n_shell, int* l_shell, int* j_shell, int* m_shell)
 unsigned int count_set_bits(unsigned int n);
 int p_from_binary(int n_s, int n_p, int b);
 void orbitals_from_binary(int n_s, int n_p, int b, int *orbitals);
+void generate_binomial_file();
 #endif

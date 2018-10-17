@@ -240,3 +240,16 @@ int n_choose_k(int n, int k) {
   c = gsl_sf_choose(n, k);
   return c;
 }
+
+void generate_binomial_file() {
+  FILE *out_file;
+  out_file = fopen("fort.13", "w");
+  for (int j = 0; j < 121; j++) {
+    for (int i = 0; i < 121; i++) {
+      fprintf(out_file, "%d\n", n_choose_k(i, j));
+    }
+  }
+  fclose(out_file);
+  
+  return;
+}

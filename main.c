@@ -8,6 +8,6 @@ int main() {
 //  generate_wave_function();
 //  printf("%g\n", compute_matrix_element_sigma_tau_plus(-6));
 //  master_equation();
-  two_body_density(2, 0);
+  one_body_density();
   return 0;
 }

@@ -49,6 +49,8 @@
 #define N_LANCZOS 20
 
 #define DENSITY_FILE "GE76_DENSITY.DAT"
+
+
 #define NUM_SHELLS 99
 #define POTENTIAL 1
 #define A_FACTOR 9.155 // [MeV] Average nuclear excitation energy

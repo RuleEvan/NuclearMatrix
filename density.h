@@ -8,7 +8,7 @@ typedef struct sBasisCoeff
   double *wave;
 } BasisCoeff;
 
-void one_body_density(int j_op, int t_op);
+void one_body_density();
 void two_body_density(int j_op, int t_op);
 
 

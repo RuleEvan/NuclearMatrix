@@ -1,9 +1,11 @@
 #include "density.h"
 
-void one_body_density(int j_op, int t_op) {
+void one_body_density() {
   // Reads in BIGSTICK basis/wavefunction (.trwfn) files along with
   // orbit definition (.sp) files and constructs the one-body density matrices
   // for each initial and final state eigenfunction
+  // Initial and final wave functions must share the same orbit file
+  
   FILE* in_file;
   in_file = fopen("ne20_basis.trwfn", "r");
   int n_proton, n_neutron, n_states, n_shells;
@@ -98,19 +100,20 @@ void one_body_density(int j_op, int t_op) {
     int ti = t_nuc[psi_i];
     // Loop over final eigenstates
     for (int psi_f = 0; psi_f < n_eig; psi_f++) {
+      printf("Initial state: %d Final State: %d \n", psi_i + 1, psi_f + 1);  
       double cg_j = 0.0;
       double cg_t = 0.0;
       int jf = j_nuc[psi_f];
       int tf = t_nuc[psi_f];
-      int j_nuc_0 = MIN(ji, jf);
-      int t_nuc_0 = MIN(ti, tf);
+      for (int j_op = abs(ji - jf); j_op <= ji + jf; j_op++) {
+        for (int t_op = abs(ti - tf); t_op <= ti + tf; t_op++) {
       cg_j = clebsch_gordan(j_op, ji, jf, 0, 0, 0);
       if (cg_j == 0.0) {continue;}
       cg_t = clebsch_gordan(t_op, ti, tf, 0, 0, 0);
       if (cg_t == 0.0) {continue;}
+      printf("J_op: %d T_op: %d\n", j_op, t_op);
       cg_j *= pow(-1.0, j_op + ji + jf)*sqrt(2*j_op + 1)/sqrt(2*jf + 1);
       cg_t *= pow(-1.0, t_op + ti + tf)*sqrt(2*t_op + 1)/sqrt(2*tf + 1);
-      printf("Initial state: %d Final State: %d \n", psi_i + 1, psi_f + 1);
       // Loop over final state orbits
       for (int i_orb1 = 0; i_orb1 < n_orbits; i_orb1++) {
         // Loop over initial state orbits
@@ -176,6 +179,8 @@ void one_body_density(int j_op, int t_op) {
           printf("%d %d %g\n", i_orb1 + 1, i_orb2 + 1, total);
         }
       }
+    }
+    }
     }
   }          
   return;
@@ -270,8 +275,6 @@ void two_body_density(int j_op, int t_op) {
       double cg_t = 0.0;
       int jf = j_nuc[psi_f];
       int tf = t_nuc[psi_f];
-      int j_nuc_0 = MIN(ji, jf);
-      int t_nuc_0 = MIN(ti, tf);
       cg_j = clebsch_gordan(j_op, ji, jf, 0, 0, 0);
       if (cg_j == 0.0) {continue;}
       cg_t = clebsch_gordan(t_op, ti, tf, 0, 0, 0);
@@ -299,7 +302,6 @@ void two_body_density(int j_op, int t_op) {
               for (int k = 0; k < 4*j_dim; k++) {
                 j_store[k] = 0.0;
               }
-              double total = 0.0;
               // Loop over shells for orbit a
               for (int a = 0; a < n_shells; a++) {
                 if (l_shell[a] != l_orb[i_orb1]) {continue;}
