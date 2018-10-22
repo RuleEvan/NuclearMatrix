@@ -241,9 +241,11 @@ double compute_matrix_element_M_GT() {
   // no radial part
   // Computes the total nuclear matrix element for the given operator
   // Uses the density matrix method to decompose into two-body matrix elements
+  int jop = 0;
+  int top = 2;
   int in1, in2, ij1, ij2, ij12, it12;
   int in1p, in2p, ij1p, ij2p, ij12p, it12p;
-
+  
   // Open the file containing density matrix coefficients
   FILE *in_file;
   in_file = fopen(DENSITY_FILE, "r");
@@ -359,6 +361,29 @@ double compute_matrix_element_M_F() {
   return mat;
 }
 
+
+// One-body matrix elements
+double cme_1_sigma() {
+  FILE* in_file;
+  in_file = fopen("ne20_density_1", "r");
+  double mat = 0.0;
+
+  for (int i = 0; i < 7; i++) {
+    int n1p, l1p, ij1p;
+    int n1, l1, ij1;
+    double density;
+    fscanf(in_file, "%d %d %d %d %d %d %lf\n", &n1p, &l1p, &ij1p, &n1, &l1, &ij1, &density); 
+    double j1p = ij1p/2.0;
+    double j1 = ij1/2.0;
+    if (l1 != l1p) {continue;}
+    if (n1 != n1p) {continue;}
+   
+    double m1 = sqrt(2)*sqrt(6.0)*sqrt((2*j1 + 1)*(2*j1p + 1))*pow(-1.0, l1 + 0.5 + j1p + 1)*six_j(0.5, j1p, l1, j1, 0.5, 1.0);
+    printf("%d %d %g %d %d %g %g\n", n1p, l1p, j1p, n1, l1, j1, m1);
+    mat += m1*density;
+  } 
+  return mat;
+} 
 
 /*******************************************/
 //  Matrix elements for Master Equation    //

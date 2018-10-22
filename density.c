@@ -93,25 +93,26 @@ void one_body_density() {
     l_orb[i] = (int) l_orb_f;
   }
   fclose(in_file);
-
+  FILE* out_file;
+  out_file = fopen("ne20_density_1", "w");
   // Loop over initial eigenstates
   for (int psi_i = 0; psi_i < n_eig; psi_i++) {
     int ji = j_nuc[psi_i];
     int ti = t_nuc[psi_i];
     // Loop over final eigenstates
     for (int psi_f = 0; psi_f < n_eig; psi_f++) {
-      printf("Initial state: %d Final State: %d \n", psi_i + 1, psi_f + 1);  
       double cg_j = 0.0;
       double cg_t = 0.0;
       int jf = j_nuc[psi_f];
       int tf = t_nuc[psi_f];
+      fprintf("Initial state: %d Final state: %d\n", psi_i, psi_f);
       for (int j_op = abs(ji - jf); j_op <= ji + jf; j_op++) {
         for (int t_op = abs(ti - tf); t_op <= ti + tf; t_op++) {
       cg_j = clebsch_gordan(j_op, ji, jf, 0, 0, 0);
       if (cg_j == 0.0) {continue;}
       cg_t = clebsch_gordan(t_op, ti, tf, 0, 0, 0);
       if (cg_t == 0.0) {continue;}
-      printf("J_op: %d T_op: %d\n", j_op, t_op);
+      fprintf(out_file, "j_op: %d t_op: %d\n", j_op, t_op);
       cg_j *= pow(-1.0, j_op + ji + jf)*sqrt(2*j_op + 1)/sqrt(2*jf + 1);
       cg_t *= pow(-1.0, t_op + ti + tf)*sqrt(2*t_op + 1)/sqrt(2*tf + 1);
       // Loop over final state orbits
@@ -176,7 +177,9 @@ void one_body_density() {
             }
           }
           total /= cg_j*cg_t;
-          printf("%d %d %g\n", i_orb1 + 1, i_orb2 + 1, total);
+          if (total != 0.0) {
+            fprintf(out_file, "%d %d %d %d %d %d %g\n", n_shell[i_orb1], l_shell[i_orb1], j_shell[i_orb1], n_shell[i_orb2], l_shell[i_orb2], j_shell[i_orb2], total);
+          }
         }
       }
     }
@@ -184,6 +187,7 @@ void one_body_density() {
     }
   }          
   return;
+  fclose(out_file);
 }
 
 void two_body_density(int j_op, int t_op) {
@@ -416,3 +420,284 @@ int s_compare(const void * a, const void * b) {
   return (basisa->p - basisb->p);
 }
 
+void exp_from_wfn() {
+
+  FILE* in_file;
+  in_file = fopen("ne20_basis.trwfn", "r");
+  int n_proton, n_neutron, n_states, n_shells;
+  // Read in number of protons and neutrons
+  fscanf(in_file, "%d\n", &n_proton);
+  fscanf(in_file, "%d\n", &n_neutron);
+  // Define buffer for skipping through input files
+  char buffer[100];
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file); 
+  fgets(buffer, 100, in_file);
+  // Read in number of shells
+  fscanf(in_file, "%d", &n_shells);
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file);
+  // Read in number of Slater determinants in the basis
+  fscanf(in_file, "%d", &n_states);
+  printf("protons: %d neutrons: %d shells: %d states: %d\n", n_proton, n_neutron, n_shells, n_states);
+
+  int *n_shell = (int*) malloc(sizeof(int)*n_shells);
+  int *j_shell = (int*) malloc(sizeof(int)*n_shells);
+  int *l_shell = (int*) malloc(sizeof(int)*n_shells);
+  int *jz_shell = (int*) malloc(sizeof(int)*n_shells);
+  int *tz_shell = (int*) malloc(sizeof(int)*n_shells);
+
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file);
+  // Read magnetic quantum number of many-body wave function
+  int jz;
+  fscanf(in_file, "%d", &jz);
+  fgets(buffer, 100, in_file);
+  // Read number of many-body eigenstates
+  int n_eig;
+  fscanf(in_file, "%d", &n_eig);
+  fgets(buffer, 100, in_file);
+  // Read in the energy, spin and isopin of each energy eigenstate
+  double *e_nuc = (double*) malloc(sizeof(double)*n_eig);
+  int *j_nuc = (int*) malloc(sizeof(int)*n_eig);
+  int *t_nuc = (int*) malloc(sizeof(int)*n_eig);
+  for (int i = 0; i < n_eig; i++) {
+    double j_float, t_float;
+    fscanf(in_file, "%lf", &e_nuc[i]);
+    fscanf(in_file, "%lf", &j_float);
+    fscanf(in_file, "%lf", &t_float);
+    j_nuc[i] = (int) j_float;
+    t_nuc[i] = (int) t_float;
+    fgets(buffer, 100, in_file);
+  }
+  // Read in the quantum numbers of each shell
+  for (int i = 0; i < n_shells; i++) {
+    fscanf(in_file, "%*d %d %d %d %d %d\n", &n_shell[i], &l_shell[i], &j_shell[i], &jz_shell[i], &tz_shell[i]);
+  }
+  int n_data = n_proton + n_neutron;
+  
+  // Read in the basis states and corresponding coefficients, store states according to their p-value (Whitehead)
+  int *orbitals = (int*) malloc(sizeof(int)*n_data);
+ 
+  BasisCoeff* p_wave = malloc(sizeof(BasisCoeff)*n_states);
+  for (int i = 0; i < n_states; i++) {
+    for (int j = 0; j < n_data; j++) {
+      fscanf(in_file, "%d", &orbitals[j]);
+    }
+    int p = p_step(n_shells, n_data, orbitals);
+    p_wave[i].p = p;
+    p_wave[i].wave = (double*) malloc(sizeof(double)*n_eig);
+    fgets(buffer, 100, in_file);
+    for (int j = 0; j < n_eig; j++) {
+      fscanf(in_file, "%lf\n", &p_wave[i].wave[j]);
+    }
+  }
+  fclose(in_file);
+  qsort(p_wave, n_states, sizeof(BasisCoeff), s_compare);  
+  int ji = 0;
+  int jf = 1;
+  int j_op = 1;
+  double cg1 = pow(-1.0, 1.0 + jf + ji)*sqrt(2*jf + 1)/clebsch_gordan(1, ji, jf, 0, 0, 0);
+  int *orb_i = (int*) malloc(sizeof(int)*n_shells);
+  int *orb_f = (int*) malloc(sizeof(int)*n_shells);
+  double mat = 0.0;
+  for (int j = 0; j < n_states; j++) {
+    int pi = p_wave[j].p;
+    orbitals_from_p(pi, n_shells, n_data, orb_i);
+    for (int k = 0; k < n_data; k++) {
+      double jk = j_shell[orb_i[k] - 1]/2.0;
+      int lk = l_shell[orb_i[k] - 1];
+      double mjk = jz_shell[orb_i[k] - 1]/2.0;
+      int nk = n_shell[orb_i[k] - 1];
+      int mtk = tz_shell[orb_i[k] - 1];
+      // Case where jp = jk
+      double cg2 = 0.0;
+      for (int ml = -lk; ml <= lk; ml++) {
+        for (int ms = -1; ms <= 1; ms += 2) {
+          cg2 += ms*pow(clebsch_gordan(lk, 0.5, jk, ml, ms/2.0, mjk), 2.0);   
+        }
+      }
+      mat += cg2*p_wave[j].wave[0]*p_wave[j].wave[24];
+      // Now case where jp = jk +/- 1
+      double jp = 0;
+      if (jk == lk + 0.5) {
+        jp = jk - 1.0;
+      } else if (jk == lk - 0.5) {
+        jp = jk + 1.0;
+      } else {
+        printf("Error: %g %d\n", jk, lk);
+      }
+      if (mjk > jp || mjk < -jp) {continue;}
+      cg2 = 0.0;
+      for (int ml = -lk; ml <= lk; ml++) {
+        for (int ms = -1; ms <= 1; ms += 2) {
+          cg2 += ms*clebsch_gordan(lk, 0.5, jp, ml, ms/2.0, mjk)*clebsch_gordan(lk, 0.5, jk, ml, ms/2.0, mjk);
+        }
+      }
+      if (cg2 == 0.0) {continue;}
+      int n_op = 0;
+      for (int n = 0; n < n_shells; n++) {
+        if ((n_shell[n] == nk) && (l_shell[n] == lk) && (j_shell[n]/2.0 == jp) && (tz_shell[n] == mtk) && (jz_shell[n]/2.0 == mjk)) {
+          n_op = n + 1;
+          break;
+        }
+      }
+      if (n_op == 0) {continue;}
+      int phase1, phase2;
+      int pn = a_op(n_shells, n_data, pi, orb_i[k], &phase1);
+      if (pn == 0) {printf("Something wrong\n");}
+      pn = a_dag_op(n_shells, n_data - 1, pn, n_op, &phase2);
+      if (pn == 0) {continue;}
+      for (int i = 0; i < n_states; i++) {
+        if (p_wave[i].p == pn) {
+          mat += cg2*p_wave[j].wave[0]*p_wave[i].wave[24]*phase1*phase2;
+          break;
+        }
+      }
+    }
+  }
+  mat *= cg1;
+  printf("%g\n", mat*mat);
+  return;
+}
+
+void exp_from_wfn_2body() {
+
+  FILE* in_file;
+  in_file = fopen("ne20_basis.trwfn", "r");
+  int n_proton, n_neutron, n_states, n_shells;
+  // Read in number of protons and neutrons
+  fscanf(in_file, "%d\n", &n_proton);
+  fscanf(in_file, "%d\n", &n_neutron);
+  // Define buffer for skipping through input files
+  char buffer[100];
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file); 
+  fgets(buffer, 100, in_file);
+  // Read in number of shells
+  fscanf(in_file, "%d", &n_shells);
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file);
+  // Read in number of Slater determinants in the basis
+  fscanf(in_file, "%d", &n_states);
+  printf("protons: %d neutrons: %d shells: %d states: %d\n", n_proton, n_neutron, n_shells, n_states);
+
+  int *n_shell = (int*) malloc(sizeof(int)*n_shells);
+  int *j_shell = (int*) malloc(sizeof(int)*n_shells);
+  int *l_shell = (int*) malloc(sizeof(int)*n_shells);
+  int *jz_shell = (int*) malloc(sizeof(int)*n_shells);
+  int *tz_shell = (int*) malloc(sizeof(int)*n_shells);
+
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file);
+  // Read magnetic quantum number of many-body wave function
+  int jz;
+  fscanf(in_file, "%d", &jz);
+  fgets(buffer, 100, in_file);
+  // Read number of many-body eigenstates
+  int n_eig;
+  fscanf(in_file, "%d", &n_eig);
+  fgets(buffer, 100, in_file);
+  // Read in the energy, spin and isopin of each energy eigenstate
+  double *e_nuc = (double*) malloc(sizeof(double)*n_eig);
+  int *j_nuc = (int*) malloc(sizeof(int)*n_eig);
+  int *t_nuc = (int*) malloc(sizeof(int)*n_eig);
+  for (int i = 0; i < n_eig; i++) {
+    double j_float, t_float;
+    fscanf(in_file, "%lf", &e_nuc[i]);
+    fscanf(in_file, "%lf", &j_float);
+    fscanf(in_file, "%lf", &t_float);
+    j_nuc[i] = (int) j_float;
+    t_nuc[i] = (int) t_float;
+    fgets(buffer, 100, in_file);
+  }
+  // Read in the quantum numbers of each shell
+  for (int i = 0; i < n_shells; i++) {
+    fscanf(in_file, "%*d %d %d %d %d %d\n", &n_shell[i], &l_shell[i], &j_shell[i], &jz_shell[i], &tz_shell[i]);
+  }
+  int n_data = n_proton + n_neutron;
+  
+  // Read in the basis states and corresponding coefficients, store states according to their p-value (Whitehead)
+  int *orbitals = (int*) malloc(sizeof(int)*n_data);
+ 
+  BasisCoeff* p_wave = malloc(sizeof(BasisCoeff)*n_states);
+  for (int i = 0; i < n_states; i++) {
+    for (int j = 0; j < n_data; j++) {
+      fscanf(in_file, "%d", &orbitals[j]);
+    }
+    int p = p_step(n_shells, n_data, orbitals);
+    p_wave[i].p = p;
+    p_wave[i].wave = (double*) malloc(sizeof(double)*n_eig);
+    fgets(buffer, 100, in_file);
+    for (int j = 0; j < n_eig; j++) {
+      fscanf(in_file, "%lf\n", &p_wave[i].wave[j]);
+    }
+  }
+  fclose(in_file);
+  qsort(p_wave, n_states, sizeof(BasisCoeff), s_compare);  
+  int ji = 0;
+  int jf = 1;
+  int j_op = 1;
+  double cg1 = pow(-1.0, 1.0 + jf + ji)*sqrt(2*jf + 1)/clebsch_gordan(1, ji, jf, 0, 0, 0);
+  int *orb_i = (int*) malloc(sizeof(int)*n_shells);
+  int *orb_f = (int*) malloc(sizeof(int)*n_shells);
+  double mat = 0.0;
+  for (int j = 0; j < n_states; j++) {
+    int pi = p_wave[j].p;
+    orbitals_from_p(pi, n_shells, n_data, orb_i);
+    for (int k = 0; k < n_data; k++) {
+      double jk = j_shell[orb_i[k] - 1]/2.0;
+      int lk = l_shell[orb_i[k] - 1];
+      double mjk = jz_shell[orb_i[k] - 1]/2.0;
+      int nk = n_shell[orb_i[k] - 1];
+      int mtk = tz_shell[orb_i[k] - 1];
+      // Case where jp = jk
+      double cg2 = 0.0;
+      for (int ml = -lk; ml <= lk; ml++) {
+        for (int ms = -1; ms <= 1; ms += 2) {
+          cg2 += ms*pow(clebsch_gordan(lk, 0.5, jk, ml, ms/2.0, mjk), 2.0);   
+        }
+      }
+      mat += cg2*p_wave[j].wave[0]*p_wave[j].wave[24];
+      // Now case where jp = jk +/- 1
+      double jp = 0;
+      if (jk == lk + 0.5) {
+        jp = jk - 1.0;
+      } else if (jk == lk - 0.5) {
+        jp = jk + 1.0;
+      } else {
+        printf("Error: %g %d\n", jk, lk);
+      }
+      if (mjk > jp || mjk < -jp) {continue;}
+      cg2 = 0.0;
+      for (int ml = -lk; ml <= lk; ml++) {
+        for (int ms = -1; ms <= 1; ms += 2) {
+          cg2 += ms*clebsch_gordan(lk, 0.5, jp, ml, ms/2.0, mjk)*clebsch_gordan(lk, 0.5, jk, ml, ms/2.0, mjk);
+        }
+      }
+      if (cg2 == 0.0) {continue;}
+      int n_op = 0;
+      for (int n = 0; n < n_shells; n++) {
+        if ((n_shell[n] == nk) && (l_shell[n] == lk) && (j_shell[n]/2.0 == jp) && (tz_shell[n] == mtk) && (jz_shell[n]/2.0 == mjk)) {
+          n_op = n + 1;
+          break;
+        }
+      }
+      if (n_op == 0) {continue;}
+      int phase1, phase2;
+      int pn = a_op(n_shells, n_data, pi, orb_i[k], &phase1);
+      if (pn == 0) {printf("Something wrong\n");}
+      pn = a_dag_op(n_shells, n_data - 1, pn, n_op, &phase2);
+      if (pn == 0) {continue;}
+      for (int i = 0; i < n_states; i++) {
+        if (p_wave[i].p == pn) {
+          mat += cg2*p_wave[j].wave[0]*p_wave[i].wave[24]*phase1*phase2;
+          break;
+        }
+      }
+    }
+  }
+  mat *= cg1;
+  printf("%g\n", mat*mat);
+  return;
+}

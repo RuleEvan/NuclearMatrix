@@ -32,3 +32,5 @@ void generate_wave_function() {
   fclose(in_file);
   
 }
+
+

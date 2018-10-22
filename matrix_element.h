@@ -6,4 +6,5 @@ double compute_matrix_element_tau_plus(int iv);
 double compute_matrix_element_M_GT();
 double compute_matrix_element_M_F();
 double compute_matrix_element_TT(int iv);
+double cme_1_sigma();
 #endif

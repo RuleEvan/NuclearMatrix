@@ -49,6 +49,8 @@ void orbitals_from_p(int p, int n_s, int n_p, int* orbitals) {
 }
 
 void orbitals_from_binary(int n_s, int n_p, int b, int* orbitals) {
+  // Computes the orbital of each particle from the corresponding
+  // binary integer
   int j = n_p - 1;
   for (int i = 0; i < n_s; i++) {
     if (b % (int) pow(2, i + 1) != 0) { 
@@ -61,19 +63,115 @@ void orbitals_from_binary(int n_s, int n_p, int b, int* orbitals) {
 }
 
 int p_from_binary(int n_s, int n_p, int b) {
+  // Computes the p-coefficient from the corresponding binary number
   int* orbitals = (int*) malloc(sizeof(int)*n_p);
   orbitals_from_binary(n_s, n_p, b, orbitals);
   int p = p_step(n_s, n_p, orbitals);
   return p;
 }
 
-unsigned int count_set_bits(unsigned int n) {
-  unsigned int count = 0;
-  while (n) {
-    n & (n-1);
-    count++;
+int m_from_p(int p, int n_s, int n_p, int* m_shell) {
+  // Returns the total magnetic angular momentum of a given p-value
+  int q = n_choose_k(n_s, n_p) - p;
+  int j_min = 1;
+  int m_tot = 0;
+  for (int k = 0; k < n_p; k++) {
+    for (int j = j_min; j <= n_s; j++) {
+      if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
+        m_tot += m_shell[j];
+        q -= n_choose_k(n_s - j, n_p  - k);
+        j_min = j+1;
+        break;
+      }
+    }
   }
-  return count;
+  return m_tot;
+}
+
+
+int bin_from_p(int n_s, int n_p, int p) {
+  // Returns the binary SD from the corresponding p-value
+  int q = n_choose_k(n_s, n_p) - p;
+  int j_min = 1;
+  int bin = 0;
+  for (int k = 0; k < n_p; k++) {
+    for (int j = j_min; j <= n_s; j++) {
+      if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
+        bin += pow(2, n_s - j);
+        q -= n_choose_k(n_s - j, n_p  - k);
+        j_min = j+1;
+        break;
+      }
+    }
+  }
+  return bin;
+}
+
+int bin_phase_from_p(int n_s, int n_p, int p, int n_op, int* phase) {
+  // Computes the binary SD and corresponding phase from acting an
+  // operator at position n_op
+  int q = n_choose_k(n_s, n_p) - p;
+  int j_min = 1;
+  int bin = 0;
+  *phase = 1;
+  for (int k = 0; k < n_p; k++) {
+    for (int j = j_min; j <= n_s; j++) {
+      if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
+        bin += pow(2, n_s - j);
+        q -= n_choose_k(n_s - j, n_p  - k);
+        j_min = j+1;
+        if (j < n_op) {*phase *= -1;}
+        break;
+      }
+    }
+  }
+  return bin;
+}
+
+int a_op(int n_s, int n_p, int p, int n_op, int *phase) {
+  // Acts an annihilation operator on the orbital in position n_op
+  *phase = 1;
+  unsigned int bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
+  unsigned int check = pow(2, n_s - n_op);
+  if (!(bin & check)) {return 0;}
+  bin -= check;
+  int pp = p_from_binary(n_s, n_p - 1, bin);
+  return pp;
+}
+
+int a_dag_op(int n_s, int n_p, int p, int n_op, int *phase) {
+  // Acts a creation operator on the orbital in position n_op
+  *phase = 1;
+  unsigned int bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
+  unsigned int check = pow(2, n_s - n_op);
+  if (bin & check) {return 0;}
+  bin += check;
+  int pp = p_from_binary(n_s, n_p + 1, bin);
+  return pp;
+}
+
+
+
+int n_choose_k(int n, int k) {
+  // Computes the binomial coefficient n choose k with the proper
+  // rule when k > n (Whitehead)
+  int c = 0;
+  if (k > n) {return c;}
+  c = gsl_sf_choose(n, k);
+  return c;
+}
+
+void generate_binomial_file() {
+  FILE *out_file;
+  out_file = fopen("fort.13", "w");
+  for (int j = 0; j < 121; j++) {
+    for (int i = 0; i < 121; i++) {
+      fprintf(out_file, "%d\n", n_choose_k(i, j));
+    }
+  }
+  fclose(out_file);
+  
+  return;
 }
 
 void initialize_orbitals(int* n_shell, int* l_shell, int* j_shell, int* m_shell) {
@@ -158,98 +256,4 @@ void generate_single_particle_states() {
   return;
 }
 
-int m_from_p(int p, int n_s, int n_p, int* m_shell) {
-  int q = n_choose_k(n_s, n_p) - p;
-  int j_min = 1;
-  int m_tot = 0;
-  for (int k = 0; k < n_p; k++) {
-    for (int j = j_min; j <= n_s; j++) {
-      if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
-        m_tot += m_shell[j];
-        q -= n_choose_k(n_s - j, n_p  - k);
-        j_min = j+1;
-        break;
-      }
-    }
-  }
-  return m_tot;
-}
 
-
-int bin_from_p(int n_s, int n_p, int p) {
-  int q = n_choose_k(n_s, n_p) - p;
-  int j_min = 1;
-  int bin = 0;
-  for (int k = 0; k < n_p; k++) {
-    for (int j = j_min; j <= n_s; j++) {
-      if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
-        bin += pow(2, n_s - j);
-        q -= n_choose_k(n_s - j, n_p  - k);
-        j_min = j+1;
-        break;
-      }
-    }
-  }
-  return bin;
-}
-
-int bin_phase_from_p(int n_s, int n_p, int p, int n_op, int* phase) {
-  int q = n_choose_k(n_s, n_p) - p;
-  int j_min = 1;
-  int bin = 0;
-  *phase = 1;
-  for (int k = 0; k < n_p; k++) {
-    for (int j = j_min; j <= n_s; j++) {
-      if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
-        bin += pow(2, n_s - j);
-        q -= n_choose_k(n_s - j, n_p  - k);
-        j_min = j+1;
-        if (j < n_op) {*phase *= -1;}
-        break;
-      }
-    }
-  }
-  return bin;
-}
-
-int a_op(int n_s, int n_p, int p, int n_op, int *phase) {
-  *phase = 1;
-  unsigned int bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
-  unsigned int check = pow(2, n_s - n_op);
-  if (!(bin & check)) {return 0;}
-  bin -= check;
-  int pp = p_from_binary(n_s, n_p - 1, bin);
-  return pp;
-}
-
-int a_dag_op(int n_s, int n_p, int p, int n_op, int *phase) {
-  *phase = 1;
-  unsigned int bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
-  unsigned int check = pow(2, n_s - n_op);
-  if (bin & check) {return 0;}
-  bin += check;
-  int pp = p_from_binary(n_s, n_p + 1, bin);
-  return pp;
-}
-
-
-
-int n_choose_k(int n, int k) {
-  int c = 0;
-  if (k > n) {return c;}
-  c = gsl_sf_choose(n, k);
-  return c;
-}
-
-void generate_binomial_file() {
-  FILE *out_file;
-  out_file = fopen("fort.13", "w");
-  for (int j = 0; j < 121; j++) {
-    for (int i = 0; i < 121; i++) {
-      fprintf(out_file, "%d\n", n_choose_k(i, j));
-    }
-  }
-  fclose(out_file);
-  
-  return;
-}
