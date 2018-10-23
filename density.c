@@ -193,10 +193,11 @@ void one_body_density() {
 void two_body_density(int j_op, int t_op) {
 
   FILE* in_file;
+  // Read in initial wavefunction data
   in_file = fopen("ne20_basis.trwfn", "r");
-  int n_proton, n_neutron, n_states, n_shells;
-  fscanf(in_file, "%d\n", &n_proton);
-  fscanf(in_file, "%d\n", &n_neutron);
+  int n_proton_i, n_neutron_i, n_states_i, n_shells;
+  fscanf(in_file, "%d\n", &n_proton_i);
+  fscanf(in_file, "%d\n", &n_neutron_i);
   char buffer[100];
   fgets(buffer, 100, in_file);
   fgets(buffer, 100, in_file);
@@ -204,8 +205,9 @@ void two_body_density(int j_op, int t_op) {
   fscanf(in_file, "%d", &n_shells);
   fgets(buffer, 100, in_file);
   fgets(buffer, 100, in_file);
-  fscanf(in_file, "%d", &n_states);
-  printf("%d, %d, %d, %d\n", n_proton, n_neutron, n_states, n_shells);
+  fscanf(in_file, "%d", &n_states_i);
+  printf("Initial state contains %d protons and %d neutrons\n", n_proton_i, n_neutron_i);
+  printf("The model space has %d shells for a total basis size of %d\n", n_shells, n_states_i);
 
   int *n_shell = (int*) malloc(sizeof(int)*n_shells);
   int *j_shell = (int*) malloc(sizeof(int)*n_shells);
@@ -215,45 +217,109 @@ void two_body_density(int j_op, int t_op) {
 
   fgets(buffer, 100, in_file);
   fgets(buffer, 100, in_file);
-  int jz;
-  fscanf(in_file, "%d", &jz);
+  int jz_i;
+  fscanf(in_file, "%d", &jz_i);
   fgets(buffer, 100, in_file);
-  int n_eig;
-  fscanf(in_file, "%d", &n_eig);
+  int n_eig_i;
+  fscanf(in_file, "%d", &n_eig_i);
+  printf("Initial state file contains %d eigenstates\n", n_eig_i);
   fgets(buffer, 100, in_file);
-  double *e_nuc = (double*) malloc(sizeof(double)*n_eig);
-  int *j_nuc = (int*) malloc(sizeof(int)*n_eig);
-  int *t_nuc = (int*) malloc(sizeof(int)*n_eig);
-  for (int i = 0; i < n_eig; i++) {
+  double *e_nuc_i = (double*) malloc(sizeof(double)*n_eig_i);
+  int *j_nuc_i = (int*) malloc(sizeof(int)*n_eig_i);
+  int *t_nuc_i = (int*) malloc(sizeof(int)*n_eig_i);
+  for (int i = 0; i < n_eig_i; i++) {
     double j_float, t_float;
-    fscanf(in_file, "%lf", &e_nuc[i]);
+    fscanf(in_file, "%lf", &e_nuc_i[i]);
     fscanf(in_file, "%lf", &j_float);
     fscanf(in_file, "%lf", &t_float);
-    j_nuc[i] = (int) j_float;
-    t_nuc[i] = (int) t_float;
+    j_nuc_i[i] = (int) j_float;
+    t_nuc_i[i] = (int) t_float;
     fgets(buffer, 100, in_file);
   }
+  // Read in shell quantum numbers
   for (int i = 0; i < n_shells; i++) {
     fscanf(in_file, "%*d %d %d %d %d %d\n", &n_shell[i], &l_shell[i], &j_shell[i], &jz_shell[i], &tz_shell[i]);
   }
-  int n_data = n_proton + n_neutron;
+  int n_data = n_proton_i + n_neutron_i;
   int* orbitals = (int*) malloc(sizeof(int)*n_data);
-  BasisCoeff* p_wave = malloc(sizeof(BasisCoeff)*n_states);
-  for (int i = 0; i < n_states; i++) {
+  BasisCoeff* p_wave_i = malloc(sizeof(BasisCoeff)*n_states_i);
+  for (int i = 0; i < n_states_i; i++) {
     for (int j = 0; j < n_data; j++) {
       fscanf(in_file, "%d", &orbitals[j]);
     }
     int p = p_step(n_shells, n_data, orbitals);
-    p_wave[i].p = p;
-    p_wave[i].wave = (double*) malloc(sizeof(double)*n_eig);
+    p_wave_i[i].p = p;
+    p_wave_i[i].wave = (double*) malloc(sizeof(double)*n_eig_i);
     fgets(buffer, 100, in_file);
-    for (int j = 0; j < n_eig; j++) {
-      fscanf(in_file, "%lf\n", &p_wave[i].wave[j]);
+    for (int j = 0; j < n_eig_i; j++) {
+      fscanf(in_file, "%lf\n", &p_wave_i[i].wave[j]);
     }
   }
-  qsort(p_wave, n_states, sizeof(BasisCoeff), s_compare);  
+  qsort(p_wave_i, n_states_i, sizeof(BasisCoeff), s_compare);  
 
   fclose(in_file);
+  
+  in_file = fopen("mg20_basis.trwfn", "r");
+  int n_proton_f, n_neutron_f, n_states_f, n_shells_test;
+  fscanf(in_file, "%d\n", &n_proton_f);
+  fscanf(in_file, "%d\n", &n_neutron_f);
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file);
+  fscanf(in_file, "%d", &n_shells_test);
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file);
+  fscanf(in_file, "%d", &n_states_f);
+  printf("Final state contains %d protons and %d neutrons\n", n_proton_f, n_neutron_f);
+  printf("The model space has %d shells for a total basis size of %d\n", n_shells, n_states_f);
+  if (n_proton_f + n_neutron_f != n_proton_i + n_neutron_i) {printf("Error: total number of nucleons is not constant\n"); exit(0);}
+  if (n_shells != n_shells_test) {printf("Error: number of shells does not agree between initial and final state model spaces\n"); exit(0);}
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file);
+  int jz_f;
+  fscanf(in_file, "%d", &jz_f);
+  fgets(buffer, 100, in_file);
+  int n_eig_f;
+  fscanf(in_file, "%d", &n_eig_f);
+  printf("Final state file contains %d eigenvalues\n", n_eig_f);
+  fgets(buffer, 100, in_file);
+  double *e_nuc_f = (double*) malloc(sizeof(double)*n_eig_f);
+  int *j_nuc_f = (int*) malloc(sizeof(int)*n_eig_f);
+  int *t_nuc_f = (int*) malloc(sizeof(int)*n_eig_f);
+  for (int i = 0; i < n_eig_f; i++) {
+    double j_float, t_float;
+    fscanf(in_file, "%lf", &e_nuc_f[i]);
+    fscanf(in_file, "%lf", &j_float);
+    fscanf(in_file, "%lf", &t_float);
+    j_nuc_f[i] = (int) j_float;
+    t_nuc_f[i] = (int) t_float;
+    fgets(buffer, 100, in_file);
+  }
+  for (int i = 0; i < n_shells; i++) {
+    int n_test, l_test, j_test, jz_test, tz_test;
+    fscanf(in_file, "%*d %d %d %d %d %d\n", &n_test, &l_test, &j_test, &jz_test, &tz_test);
+    if ((n_test != n_shell[i]) || (l_test != l_shell[i]) || (j_test != j_shell[i]) || (jz_test != jz_shell[i]) || (tz_test != tz_shell[i])) {
+      printf("Error shell structure is not identical between initial and final state model spaces\n");
+      exit(0);
+    }
+  }
+  BasisCoeff* p_wave_f = malloc(sizeof(BasisCoeff)*n_states_f);
+  for (int i = 0; i < n_states_f; i++) {
+    for (int j = 0; j < n_data; j++) {
+      fscanf(in_file, "%d", &orbitals[j]);
+    }
+    int p = p_step(n_shells, n_data, orbitals);
+    p_wave_f[i].p = p;
+    p_wave_f[i].wave = (double*) malloc(sizeof(double)*n_eig_f);
+    fgets(buffer, 100, in_file);
+    for (int j = 0; j < n_eig_f; j++) {
+      fscanf(in_file, "%lf\n", &p_wave_f[i].wave[j]);
+    }
+  }
+  qsort(p_wave_f, n_states_f, sizeof(BasisCoeff), s_compare);  
+
+  fclose(in_file);
+  
   in_file = fopen("sd.sps", "r");
   fgets(buffer, 100, in_file);
   int n_orbits;
@@ -269,16 +335,16 @@ void two_body_density(int j_op, int t_op) {
     l_orb[i] = (int) l_orb_f;
   }
   fclose(in_file);
-  for (int psi_i = 0; psi_i < n_eig; psi_i++) {
+  for (int psi_i = 0; psi_i < n_eig_i; psi_i++) {
     // Loop over initial many-body wave functions
-    int ji = j_nuc[psi_i];
-    int ti = t_nuc[psi_i];
-    for (int psi_f = 0; psi_f < n_eig; psi_f++) {
+    int ji = j_nuc_i[psi_i];
+    int ti = t_nuc_i[psi_i];
+    for (int psi_f = 0; psi_f < n_eig_f; psi_f++) {
       // Loop over final many-body wave functions
       double cg_j = 0.0;
       double cg_t = 0.0;
-      int jf = j_nuc[psi_f];
-      int tf = t_nuc[psi_f];
+      int jf = j_nuc_f[psi_f];
+      int tf = t_nuc_f[psi_f];
       cg_j = clebsch_gordan(j_op, ji, jf, 0, 0, 0);
       if (cg_j == 0.0) {continue;}
       cg_t = clebsch_gordan(t_op, ti, tf, 0, 0, 0);
@@ -345,18 +411,22 @@ void two_body_density(int j_op, int t_op) {
                           // Loop over coupled angular momentum j34
                           for (int j34 = abs(j3 - j4); j34 <= j3 + j4; j34++) {
                             if ((mj3 + mj4 > j34) || (mj3 + mj4 < -j34)){continue;}
-                            double cg_j34 = clebsch_gordan(j3, j4, j34, mj3, mj4, mj3 + mj4);
+                            double cg_j34 = clebsch_gordan(j3, j4, j34, -mj3, -mj4, -mj3 - mj4);
                             if (cg_j34 == 0.0) {continue;}
                             double cg_jop = clebsch_gordan(j12, j34, j_op, mj1 + mj2, mj3 + mj4, 0);
                             if (cg_jop == 0.0) {continue;}
                             for (int t34 = 0; t34 <= 1; t34++) {
                               if ((mt3 + mt4 > t34) || (mt3 + mt4 < -t34)){continue;}
-                              double cg_t34 = clebsch_gordan(0.5, 0.5, t34, mt3, mt4, mt3 + mt4);
-                              double d2 = pow(-1.0, j3 + j4 + mj3 + mj4)*cg_j12*cg_j34*cg_jop*cg_t12*cg_t34;
+                              double cg_t34 = clebsch_gordan(0.5, 0.5, t34, -mt3, -mt4, -mt3 - mt4);
+                              if (cg_t34 == 0.0) {continue;}
+                              double cg_top = clebsch_gordan(t12, t34, t_op, mt1 + mt2, mt3 + mt4, 0);
+                              if (cg_top == 0.0) {continue;}
+                              double d2 = pow(-1.0, j3 + j4 + mj3 + mj4)*cg_j12*cg_j34*cg_jop;
+                              d2 *= pow(-1.0, 1 + mt3 + mt4)*cg_t12*cg_t34*cg_top;
                               double d1 = 0.0;
                               // Loop over initial wave function basis
-                              for (int j = 0; j < n_states; j++) {
-                                int pi = p_wave[j].p;
+                              for (int j = 0; j < n_states_i; j++) {
+                                int pi = p_wave_i[j].p;
                                 int phase1, phase2, phase3, phase4;
                                 pi = a_op(n_shells, n_data, pi, c + 1, &phase1);
                                 if (pi == 0) {continue;}
@@ -367,15 +437,17 @@ void two_body_density(int j_op, int t_op) {
                                 pi = a_dag_op(n_shells, n_data - 1, pi, a + 1, &phase4);
                                 if (pi == 0) {continue;}
                                 int i_min = 0;
-                                int i_max = n_states - 1;
+                                int i_max = n_states_f - 1;
                                 while (1 == 1) {
                                   int i = ceil((i_max + i_min)/2.0);
-                                  int pf = p_wave[i].p;
-                                //  printf("%d, %d, %d, %d\n", pi, i, i_min, i_max);
+                                  int pf = p_wave_f[i].p;
+                                  //printf("%d, %d, %d, %d\n", pi, i, i_min, i_max);
                                   if (pf == pi) {
-                                    d1 += p_wave[i].wave[psi_f]*p_wave[j].wave[psi_i]*phase1*phase2*phase3*phase4;
+                                    d1 += p_wave_f[i].wave[psi_f]*p_wave_i[j].wave[psi_i]*phase1*phase2*phase3*phase4;
                                     break;
-                                  } else if ((p_wave[i-1].p < pi) && (p_wave[i+1].p > pi)) {
+                                  } else if ((p_wave_f[i-1].p < pi) && (p_wave_f[i+1].p > pi)) {
+                                    break;
+                                  } else if (i_max < i_min) {
                                     break;
                                   } else if (pf > pi) {
                                     i_max = i-1;
