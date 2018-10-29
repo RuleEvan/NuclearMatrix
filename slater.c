@@ -1,6 +1,6 @@
 #include "slater.h"
 
-int p_step(int n_s, int n_p, int *m_p) {
+int64_t p_step(int n_s, int n_p, int *m_p) {
 /* Compute the p-coefficient (see Whitehead) associated with a
    given Slater determinant
 
@@ -12,14 +12,14 @@ int p_step(int n_s, int n_p, int *m_p) {
   Output(s): 
     int p: p-coefficient of the given Slater determinant
 */
-  int p = gsl_sf_choose(n_s, n_p);
+  int64_t p = gsl_sf_choose(n_s, n_p);
   for (int i = 0; i < n_p; i++) {
     p -= n_choose_k(n_s-m_p[i], n_p - i);
   }
   return p;
 }
 
-void orbitals_from_p(int p, int n_s, int n_p, int* orbitals) {
+void orbitals_from_p(int64_t p, int n_s, int n_p, int* orbitals) {
 /* Given a p-coefficient, reconstruct the orbitals occupied in
    the corresponding Slater determinant
 
@@ -33,7 +33,7 @@ void orbitals_from_p(int p, int n_s, int n_p, int* orbitals) {
   Output(s): None
 
 */
-  int q = n_choose_k(n_s, n_p) - p;
+  int64_t q = n_choose_k(n_s, n_p) - p;
   int j_min = 1;
   for (int k = 0; k < n_p; k++) {
     for (int j = j_min; j <= n_s; j++) {
@@ -48,7 +48,25 @@ void orbitals_from_p(int p, int n_s, int n_p, int* orbitals) {
   return;
 }
 
-void orbitals_from_binary(int n_s, int n_p, int b, int* orbitals) {
+int m_from_p(int64_t p, int n_s, int n_p, int* m_shell) {
+  // Returns the total magnetic angular momentum of a given p-value
+  int64_t q = n_choose_k(n_s, n_p) - p;
+  int j_min = 1;
+  int m_tot = 0;
+  for (int k = 0; k < n_p; k++) {
+    for (int j = j_min; j <= n_s; j++) {
+      if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
+        m_tot += m_shell[j-1];
+        q -= n_choose_k(n_s - j, n_p  - k);
+        j_min = j+1;
+        break;
+      }
+    }
+  }
+  return m_tot;
+}
+
+void orbitals_from_binary(int n_s, int n_p, int64_t b, int* orbitals) {
   // Computes the orbital of each particle from the corresponding
   // binary integer
   int j = n_p - 1;
@@ -62,38 +80,30 @@ void orbitals_from_binary(int n_s, int n_p, int b, int* orbitals) {
   return;
 }
 
-int p_from_binary(int n_s, int n_p, int b) {
+int64_t bin_from_orbitals(int n_s, int n_p, int* orbitals) {
+  int64_t b = 0;
+  for (int i = 0; i < n_p; i++) {
+    b += pow(2, n_s - orbitals[i]);
+  }
+  return b;
+}
+
+int64_t p_from_binary(int n_s, int n_p, int64_t b) {
   // Computes the p-coefficient from the corresponding binary number
   int* orbitals = (int*) malloc(sizeof(int)*n_p);
   orbitals_from_binary(n_s, n_p, b, orbitals);
-  int p = p_step(n_s, n_p, orbitals);
+  int64_t p = p_step(n_s, n_p, orbitals);
+  free(orbitals);
+
   return p;
 }
 
-int m_from_p(int p, int n_s, int n_p, int* m_shell) {
-  // Returns the total magnetic angular momentum of a given p-value
-  int q = n_choose_k(n_s, n_p) - p;
-  int j_min = 1;
-  int m_tot = 0;
-  for (int k = 0; k < n_p; k++) {
-    for (int j = j_min; j <= n_s; j++) {
-      if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
-        m_tot += m_shell[j];
-        q -= n_choose_k(n_s - j, n_p  - k);
-        j_min = j+1;
-        break;
-      }
-    }
-  }
-  return m_tot;
-}
 
-
-int bin_from_p(int n_s, int n_p, int p) {
+int64_t bin_from_p(int n_s, int n_p, int64_t p) {
   // Returns the binary SD from the corresponding p-value
-  int q = n_choose_k(n_s, n_p) - p;
+  int64_t q = n_choose_k(n_s, n_p) - p;
   int j_min = 1;
-  int bin = 0;
+  int64_t bin = 0;
   for (int k = 0; k < n_p; k++) {
     for (int j = j_min; j <= n_s; j++) {
       if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
@@ -107,10 +117,10 @@ int bin_from_p(int n_s, int n_p, int p) {
   return bin;
 }
 
-int bin_phase_from_p(int n_s, int n_p, int p, int n_op, int* phase) {
+int64_t bin_phase_from_p(int n_s, int n_p, int64_t p, int n_op, int* phase) {
   // Computes the binary SD and corresponding phase from acting an
   // operator at position n_op
-  int q = n_choose_k(n_s, n_p) - p;
+  int64_t q = n_choose_k(n_s, n_p) - p;
   int j_min = 1;
   int bin = 0;
   *phase = 1;
@@ -128,34 +138,84 @@ int bin_phase_from_p(int n_s, int n_p, int p, int n_op, int* phase) {
   return bin;
 }
 
-int a_op(int n_s, int n_p, int p, int n_op, int *phase) {
+int64_t a_op(int n_s, int n_p, int64_t p, int n_op, int *phase) {
   // Acts an annihilation operator on the orbital in position n_op
   *phase = 1;
   unsigned int bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
   unsigned int check = pow(2, n_s - n_op);
   if (!(bin & check)) {return 0;}
   bin -= check;
-  int pp = p_from_binary(n_s, n_p - 1, bin);
+  int64_t pp = p_from_binary(n_s, n_p - 1, bin);
   return pp;
 }
 
-int a_dag_op(int n_s, int n_p, int p, int n_op, int *phase) {
+int64_t a_dag_op(int n_s, int n_p, int64_t p, int n_op, int *phase) {
   // Acts a creation operator on the orbital in position n_op
   *phase = 1;
-  unsigned int bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
-  unsigned int check = pow(2, n_s - n_op);
+  int64_t bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
+  int64_t check = pow(2, n_s - n_op);
   if (bin & check) {return 0;}
   bin += check;
-  int pp = p_from_binary(n_s, n_p + 1, bin);
+  int64_t pp = p_from_binary(n_s, n_p + 1, bin);
   return pp;
 }
 
+int64_t a_dag_a_op(int n_s, int n_p, int64_t p, int n_a, int n_b, int *phase) {
+  *phase = 1;
+  int64_t q = n_choose_k(n_s, n_p) - p;
+  int64_t pf = n_choose_k(n_s, n_p);
+  int j_min = 1;
+  if (n_a > n_b) {*phase = -1;}
+//  printf("n_a: %d n_b: %d\n", n_a, n_b);
+  int a_found = 0;
+  int b_found = 0;
+  for (int k = 0; k < n_p; k++) {
+    for (int j = j_min; j <= n_s; j++) {
+      if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
+        if ((j == n_a) && (j != n_b)) {return 0;}
+        if (j != n_b) {
+        //  printf("Found normal orbital %d\n", j);
+          pf -= n_choose_k(n_s - j, n_p - k);
+          q -= n_choose_k(n_s - j, n_p  - k);
+          j_min = j+1;
+          if (j < n_a) {*phase *= -1;}
+          if (j < n_b) {*phase *= -1;}
+          break;
+        } else if (n_a == n_b) {
+        //  printf("Found orbital where a=b %d\n", j);
+          a_found = 1;
+          b_found = 1;
+          q -= n_choose_k(n_s - j, n_p - k);
+          j_min = j+1;
+          break;
+        } else {
+        //  printf("Found orbital to delete b: %d\n", j);
+          b_found = 1;
+          j_min = j + 1;
+          q -= n_choose_k(n_s - j, n_p - k);
+          continue;
+        }
+      }
+      if (j == n_b) {return 0;}
+      if (j == n_a) {
+      //  printf("Found orbital to add a: %d\n", j);
+        a_found = 1;
+        j_min = j+1;
+        pf -= n_choose_k(n_s - j, n_p - k);
+        break;
+      } 
+    }
+  }
+  if (!(a_found && b_found)) {return 0;}
+  if (n_a == n_b) {pf = p;}
+  return pf;
+}
 
 
-int n_choose_k(int n, int k) {
+int64_t n_choose_k(int n, int k) {
   // Computes the binomial coefficient n choose k with the proper
   // rule when k > n (Whitehead)
-  int c = 0;
+  int64_t c = 0;
   if (k > n) {return c;}
   c = gsl_sf_choose(n, k);
   return c;

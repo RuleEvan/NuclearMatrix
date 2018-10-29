@@ -11,6 +11,7 @@ double triangle(double a, double b, double c) {
 }
 
 double clebsch_gordan(double j1, double j2, double j, double m1, double m2, double m) {
+//  printf("Calling CG: %g %g %g %g %g %g\n", j1, j2, j, m1, m2, m);
   // Computes the Clebsch-Gordan coefficients between the uncoupled basis (j1, m1, j2, m2) and
   // the coupled basis (j1,j2; j,m)
   double cg = 0.0;
@@ -26,7 +27,7 @@ double clebsch_gordan(double j1, double j2, double j, double m1, double m2, doub
   }
   double w = (2.0*j + 1.0)*gsl_sf_gamma(j1 + j2 - j + 1.0)*gsl_sf_gamma(j1 - m1 + 1.0)*gsl_sf_gamma(j2 - m2 + 1.0)*gsl_sf_gamma(j + m + 1.0)*gsl_sf_gamma(j - m + 1.0)/(gsl_sf_gamma(j1 + j2 + j + 2.0)*gsl_sf_gamma(j1 - j2 + j + 1.0)*gsl_sf_gamma(-j1 + j2 + j + 1.0)*gsl_sf_gamma(j1 + m1 + 1.0)*gsl_sf_gamma(j2 + m2 + 1.0));
   cg = sqrt(w)*f;
-  
+//  printf("CG: %g\n", cg);
   return cg;
 } 
 
