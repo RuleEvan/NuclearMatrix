@@ -2,6 +2,7 @@
 #include "math.h"
 #include "stdlib.h"
 #include "stdint.h"
+#include "string.h"
 #include <gsl/gsl_sf_gamma.h>
 #include <gsl/gsl_sf_expint.h>
 #include <gsl/gsl_sf_result.h>
@@ -17,7 +18,12 @@
 #define A_FACTOR 9.155 // [MeV] Average nuclear excitation energy
 #define B_OSC 0.8
 #define Z_ATOM 32 // Atomic Number
-#define DENSITY_FILE "GE76_DENSITY.DAT"
+
+// FILE SETUP
+#define DENSITY_FILE "ne20.dens"
+#define WFN_FILE_INITIAL "ne20_basis.trwfn"
+#define WFN_FILE_FINAL "mg20_basis.trwfn"
+#define ORBIT_FILE "sd.sps"
 
 // Technical parameters
 #define R_SPL_MIN 0.0001

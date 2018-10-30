@@ -93,8 +93,8 @@ double compute_matrix_element_tau_plus(int iv) {
   double mat = 0.0;
   FILE *in_file;
   in_file = fopen(DENSITY_FILE, "r");
-  if (iv == -1) {potential_spline_init(h_AA_T_q, R_SPL_MIN, R_SPL_MAX, R_SPL_STEPS);} 
-  if (iv == -2) {potential_spline_init(h_AA_T_q_sd, R_SPL_MIN, R_SPL_MAX, R_SPL_STEPS);} 
+  if (iv == -1) {potential_spline_init(h_F_q, R_SPL_MIN, R_SPL_MAX, R_SPL_STEPS);} 
+  if (iv == -2) {potential_spline_init(h_F_q_sd, R_SPL_MIN, R_SPL_MAX, R_SPL_STEPS);} 
 
   for (int i = 0; i < NUM_SHELLS; i++) {
     int in1, in2, ij1, ij2, ij12, it12;

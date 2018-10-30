@@ -10,6 +10,7 @@ int m_from_p(int64_t p, int n_s, int n_p, int* m_shell);
 int64_t a_op(int n_s, int n_p, int64_t p, int n_op, int* phase);
 int64_t a_dag_op(int n_s, int n_p, int64_t p, int n_op, int* phase);
 int64_t a_dag_a_op(int n_s, int n_p, int64_t p, int n_a, int n_b, int* phase);
+int64_t a4_op(int n_s, int n_p, int64_t p, int n_a, int n_b, int n_c, int n_d, int* phase);
 int64_t bin_phase_from_p(int n_s, int n_p, int64_t p, int n_op, int* phase);
 int64_t bin_from_orbitals(int n_s, int n_p, int *orbitals);
 void initialize_orbitals(int* n_shell, int* l_shell, int* j_shell, int* m_shell);

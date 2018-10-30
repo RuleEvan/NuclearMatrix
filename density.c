@@ -5,13 +5,13 @@ void one_body_density(int j_op, int t_op) {
   // orbit definition (.sp) files and constructs the one-body density matrices
   // for each initial and final state eigenfunction
   // Initial and final wave functions must share the same orbit file
+  // J_op and T_op are the total spin and isospin of the operator
   wfnData *wd;
   wd = read_wfn_data();
   FILE* out_file;
   out_file = fopen("ge76_density_1", "w");
   printf("j_op: %d t_op: %d\n", j_op, t_op);
   // Loop over initial eigenstates
-  printf("Orb: %d\n", wd->n_orbits);
   for (int psi_i = 0; psi_i < wd->n_eig_i; psi_i++) {
     double ji = wd->j_nuc_i[psi_i];
     double ti = wd->t_nuc_i[psi_i];
@@ -212,22 +212,29 @@ void two_body_density(int j_op, int t_op) {
                               // Loop over initial wave function basis
                               for (int j = 0; j < wd->n_states_i; j++) {
                                 int64_t pi = wd->bc_i[j].p;
-                                int phase1, phase2, phase3, phase4;
-                                pi = a_op(wd->n_shells, wd->n_data, pi, c + 1, &phase1);
+                                //int64_t pt = pi;
+                                //int phase1, phase2, phase3, phase4;
+                                int phase;
+                                pi = a4_op(wd->n_shells, wd->n_data, pi, a + 1, b + 1, c + 1, d + 1, &phase);
                                 if (pi == 0) {continue;}
-                                pi = a_op(wd->n_shells, wd->n_data - 1, pi, d + 1, &phase2);
-                                if (pi == 0) {continue;}
-                                pi = a_dag_op(wd->n_shells, wd->n_data - 2, pi, b + 1, &phase3);
-                                if (pi == 0) {continue;}
-                                pi = a_dag_op(wd->n_shells, wd->n_data - 1, pi, a + 1, &phase4);
-                                if (pi == 0) {continue;}
+
+                                /*pt = a_op(wd->n_shells, wd->n_data, pt, c + 1, &phase1);
+                                if (pt == 0) {printf("is zero\n");}
+                                pt = a_op(wd->n_shells, wd->n_data - 1, pt, d + 1, &phase2);
+                                if (pt == 0) {printf("is zero\n");}
+                                pt = a_dag_op(wd->n_shells, wd->n_data - 2, pt, b + 1, &phase3);
+                                if (pt == 0) {printf("is zero\n");}
+                                pt = a_dag_op(wd->n_shells, wd->n_data - 1, pt, a + 1, &phase4);
+                                if (pt == 0) {printf("is zero\n");}
+                                if (phase != phase1*phase2*phase3*phase4) {printf("%d %d %d %d %ld %ld %d %d\n", a, b, c, d, pi, pt, phase, phase1*phase2*phase3*phase4);} */
+
                                 int i_min = 0;
                                 int i_max = wd->n_states_f - 1;
                                 while (i_max >= i_min) {
                                   int i = floor((i_max + i_min)/2.0);
                                   int64_t pf = wd->bc_f[i].p;
                                   if (pf == pi) {
-                                    d1 += wd->bc_f[i].wave[psi_f]*wd->bc_i[j].wave[psi_i]*phase1*phase2*phase3*phase4;
+                                    d1 += wd->bc_f[i].wave[psi_f]*wd->bc_i[j].wave[psi_i]*phase;
                                     break;
                                   } else if (pf > pi) {
                                     i_max = i-1;
@@ -272,6 +279,181 @@ void two_body_density(int j_op, int t_op) {
   } 
   free(j_store); 
   return;
+}
+
+wfnData* read_wfn_data() {
+  wfnData *wd = malloc(sizeof(*wd));
+  FILE* in_file;
+  // Read in initial wavefunction data
+  in_file = fopen(WFN_FILE_INITIAL, "r");
+  fscanf(in_file, "%d\n", &wd->n_proton_i);
+  fscanf(in_file, "%d\n", &wd->n_neutron_i);
+  char buffer[100];
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file);
+  fscanf(in_file, "%d", &wd->n_shells);
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file);
+  fscanf(in_file, "%d", &wd->n_states_i);
+  printf("Initial state contains %d protons and %d neutrons\n", wd->n_proton_i, wd->n_neutron_i);
+  printf("The model space has %d shells for a total basis size of %d\n", wd->n_shells, wd->n_states_i);
+
+  fgets(buffer, 100, in_file);
+  fgets(buffer, 100, in_file);
+  fscanf(in_file, "%lf", &wd->jz_i);
+  fgets(buffer, 100, in_file);
+  fscanf(in_file, "%d", &wd->n_eig_i);
+  printf("Initial state file contains %d eigenstates\n", wd->n_eig_i);
+  fgets(buffer, 100, in_file);
+  wd->e_nuc_i =  (double*) malloc(sizeof(double)*wd->n_eig_i);
+  wd->j_nuc_i =  (double*) malloc(sizeof(double)*wd->n_eig_i);
+  wd->t_nuc_i =  (double*) malloc(sizeof(double)*wd->n_eig_i);
+  for (int i = 0; i < wd->n_eig_i; i++) {
+    fscanf(in_file, "%lf", &wd->e_nuc_i[i]);
+    fscanf(in_file, "%lf", &wd->j_nuc_i[i]);
+    fscanf(in_file, "%lf", &wd->t_nuc_i[i]);
+    wd->j_nuc_i[i] = round(fabs(wd->j_nuc_i[i]));
+    wd->t_nuc_i[i] = round(fabs(wd->t_nuc_i[i]));
+    if (wd->n_data % 2) {
+      wd->j_nuc_i[i] -= 0.5;
+      wd->t_nuc_i[i] -= 0.5;
+    }
+
+    fgets(buffer, 100, in_file);
+  }
+  wd->n_shell = (int*) malloc(sizeof(int)*wd->n_shells);
+  wd->j_shell = (int*) malloc(sizeof(int)*wd->n_shells);
+  wd->l_shell = (int*) malloc(sizeof(int)*wd->n_shells);
+  wd->jz_shell = (int*) malloc(sizeof(int)*wd->n_shells);
+  wd->tz_shell = (int*) malloc(sizeof(int)*wd->n_shells);
+
+  // Read in shell quantum numbers
+  for (int i = 0; i < wd->n_shells; i++) {
+    fscanf(in_file, "%*d %d %d %d %d %d\n", &wd->n_shell[i], &wd->l_shell[i], &wd->j_shell[i], &wd->jz_shell[i], &wd->tz_shell[i]);
+  }
+  wd->n_data = wd->n_proton_i + wd->n_neutron_i;
+  int* orbitals = (int*) malloc(sizeof(int)*wd->n_data);
+  wd->bc_i = malloc(sizeof(BasisCoeff)*wd->n_states_i);
+  printf("Reading in initial state wavefunction coefficients\n");
+  double norm = 0.0;
+  for (int i = 0; i < wd->n_states_i; i++) {
+    for (int j = 0; j < wd->n_data; j++) {
+      fscanf(in_file, "%d", &orbitals[j]);
+    }
+    int64_t p = p_step(wd->n_shells, wd->n_data, orbitals);
+    wd->bc_i[i].p = p;
+    wd->bc_i[i].wave = (double*) malloc(sizeof(double)*wd->n_eig_i);
+    fgets(buffer, 100, in_file);
+    for (int j = 0; j < wd->n_eig_i; j++) {
+      fscanf(in_file, "%lf\n", &wd->bc_i[i].wave[j]);
+    }
+    norm += pow(wd->bc_i[i].wave[0], 2.0);
+  }
+  printf("Norm: %g\n", norm);
+  qsort(wd->bc_i, wd->n_states_i, sizeof(BasisCoeff), s_compare);  
+
+  fclose(in_file);
+  
+    
+
+  if (strcmp(WFN_FILE_INITIAL, WFN_FILE_FINAL) == 0) {
+    printf("Initial and final states are identical\n");
+    wd->n_proton_f = wd->n_proton_i;
+    wd->n_neutron_f = wd->n_neutron_i;
+    wd->n_states_f = wd->n_states_i;
+    wd->jz_f = wd->jz_i;
+    wd->n_eig_f = wd->n_eig_i;    
+    wd->e_nuc_f =  (double*) malloc(sizeof(double)*wd->n_eig_f);
+    wd->j_nuc_f =  (double*) malloc(sizeof(double)*wd->n_eig_f);
+    wd->t_nuc_f =  (double*) malloc(sizeof(double)*wd->n_eig_f);
+    wd->e_nuc_f = wd->e_nuc_i;
+    wd->j_nuc_f = wd->j_nuc_i;
+    wd->t_nuc_f = wd->t_nuc_i;
+    wd->bc_f = malloc(sizeof(BasisCoeff)*wd->n_states_f);
+    wd->bc_f = wd->bc_i;
+  } else {
+    in_file = fopen(WFN_FILE_FINAL, "r");
+    int n_shells_test;
+    fscanf(in_file, "%d\n", &wd->n_proton_f);
+    fscanf(in_file, "%d\n", &wd->n_neutron_f);
+    fgets(buffer, 100, in_file);
+    fgets(buffer, 100, in_file);
+    fgets(buffer, 100, in_file);
+    fscanf(in_file, "%d", &n_shells_test);
+    fgets(buffer, 100, in_file);
+    fgets(buffer, 100, in_file);
+    fscanf(in_file, "%d", &wd->n_states_f);
+    printf("Final state contains %d protons and %d neutrons\n", wd->n_proton_f, wd->n_neutron_f);
+    if (wd->n_shells != n_shells_test) {printf("Error: number of shells does not agree between initial and final state model spaces\n"); exit(0);}
+    printf("The model space has %d shells for a total basis size of %d\n", wd->n_shells, wd->n_states_f);
+    if (wd->n_proton_f + wd->n_neutron_f != wd->n_proton_i + wd->n_neutron_i) {printf("Error: total number of nucleons is not constant\n"); exit(0);}
+    fgets(buffer, 100, in_file);
+    fgets(buffer, 100, in_file);
+    fscanf(in_file, "%lf", &wd->jz_f);
+    fgets(buffer, 100, in_file);
+    fscanf(in_file, "%d", &wd->n_eig_f);
+    printf("Final state file contains %d eigenvalues\n", wd->n_eig_f);
+    fgets(buffer, 100, in_file);
+    wd->e_nuc_f =  (double*) malloc(sizeof(double)*wd->n_eig_f);
+    wd->j_nuc_f =  (double*) malloc(sizeof(double)*wd->n_eig_f);
+    wd->t_nuc_f =  (double*) malloc(sizeof(double)*wd->n_eig_f);
+
+    for (int i = 0; i < wd->n_eig_f; i++) {
+      fscanf(in_file, "%lf", &wd->e_nuc_f[i]);
+      fscanf(in_file, "%lf", &wd->j_nuc_f[i]);
+      fscanf(in_file, "%lf", &wd->t_nuc_f[i]);
+      wd->j_nuc_f[i] = round(fabs(wd->j_nuc_f[i]));
+      wd->t_nuc_f[i] = round(fabs(wd->t_nuc_f[i]));
+      if (wd->n_data % 2) {
+        wd->j_nuc_f[i] -= 0.5;
+        wd->t_nuc_f[i] -= 0.5;
+      }
+      fgets(buffer, 100, in_file);
+    }
+    for (int i = 0; i < wd->n_shells; i++) {
+      int n_test, l_test, j_test, jz_test, tz_test;
+      fscanf(in_file, "%*d %d %d %d %d %d\n", &n_test, &l_test, &j_test, &jz_test, &tz_test);
+      if ((n_test != wd->n_shell[i]) || (l_test != wd->l_shell[i]) || (j_test != wd->j_shell[i]) || (jz_test != wd->jz_shell[i]) || (tz_test != wd->tz_shell[i])) {
+        printf("Error shell structure is not identical between initial and final state model spaces\n");
+        exit(0);
+      }
+    }
+    wd->bc_f = malloc(sizeof(BasisCoeff)*wd->n_states_f);
+    for (int i = 0; i < wd->n_states_f; i++) {
+      for (int j = 0; j < wd->n_data; j++) {
+        fscanf(in_file, "%d", &orbitals[j]);
+      }
+      int64_t p = p_step(wd->n_shells, wd->n_data, orbitals);
+      wd->bc_f[i].p = p;
+      wd->bc_f[i].wave = (double*) malloc(sizeof(double)*wd->n_eig_f);
+      fgets(buffer, 100, in_file);
+      for (int j = 0; j < wd->n_eig_f; j++) {
+        fscanf(in_file, "%lf\n", &wd->bc_f[i].wave[j]);
+      }
+    }
+    qsort(wd->bc_f, wd->n_states_f, sizeof(BasisCoeff), s_compare);  
+  
+    fclose(in_file);
+  }
+
+  in_file = fopen(ORBIT_FILE, "r");
+  fgets(buffer, 100, in_file);
+  fscanf(in_file, "%d\n", &wd->n_orbits);
+  printf("The model space contains %d orbitals\n", wd->n_orbits);
+  wd->n_orb = (int*) malloc(sizeof(int)*wd->n_orbits);
+  wd->l_orb = (int*) malloc(sizeof(int)*wd->n_orbits);
+  wd->j_orb = (double*) malloc(sizeof(double)*wd->n_orbits);
+
+  for (int i = 0; i < wd->n_orbits; i++) {
+    double n_orb_f, l_orb_f;
+    fscanf(in_file, "%lf %lf %lf %*d", &n_orb_f, &l_orb_f, &wd->j_orb[i]);
+    wd->n_orb[i] = (int) n_orb_f;
+    wd->l_orb[i] = (int) l_orb_f;
+    printf("%d, %d, %g\n", wd->n_orb[i], wd->l_orb[i], wd->j_orb[i]);
+  }
+  fclose(in_file);
+  return wd;
 }
 
 int s_compare(const void * a, const void * b) {
@@ -362,10 +544,8 @@ void exp_from_wfn() {
   qsort(p_wave, n_states, sizeof(BasisCoeff), s_compare);  
   int ji = 0;
   int jf = 1;
-  int j_op = 1;
   double cg1 = pow(-1.0, 1.0 + jf + ji)*sqrt(2*jf + 1)/clebsch_gordan(1, ji, jf, 0, 0, 0);
   int *orb_i = (int*) malloc(sizeof(int)*n_shells);
-  int *orb_f = (int*) malloc(sizeof(int)*n_shells);
   double mat = 0.0;
   for (int j = 0; j < n_states; j++) {
     int pi = p_wave[j].p;
@@ -427,156 +607,4 @@ void exp_from_wfn() {
   return;
 }
 
-wfnData* read_wfn_data() {
-  wfnData *wd = malloc(sizeof(*wd));
-  FILE* in_file;
-  // Read in initial wavefunction data
-  in_file = fopen("ne20_basis.trwfn", "r");
-  fscanf(in_file, "%d\n", &wd->n_proton_i);
-  fscanf(in_file, "%d\n", &wd->n_neutron_i);
-  char buffer[100];
-  fgets(buffer, 100, in_file);
-  fgets(buffer, 100, in_file);
-  fgets(buffer, 100, in_file);
-  fscanf(in_file, "%d", &wd->n_shells);
-  fgets(buffer, 100, in_file);
-  fgets(buffer, 100, in_file);
-  fscanf(in_file, "%d", &wd->n_states_i);
-  printf("Initial state contains %d protons and %d neutrons\n", wd->n_proton_i, wd->n_neutron_i);
-  printf("The model space has %d shells for a total basis size of %d\n", wd->n_shells, wd->n_states_i);
 
-  fgets(buffer, 100, in_file);
-  fgets(buffer, 100, in_file);
-  fscanf(in_file, "%lf", &wd->jz_i);
-  fgets(buffer, 100, in_file);
-  fscanf(in_file, "%d", &wd->n_eig_i);
-  printf("Initial state file contains %d eigenstates\n", wd->n_eig_i);
-  fgets(buffer, 100, in_file);
-  wd->e_nuc_i =  (double*) malloc(sizeof(double)*wd->n_eig_i);
-  wd->j_nuc_i =  (double*) malloc(sizeof(double)*wd->n_eig_i);
-  wd->t_nuc_i =  (double*) malloc(sizeof(double)*wd->n_eig_i);
-  for (int i = 0; i < wd->n_eig_i; i++) {
-    fscanf(in_file, "%lf", &wd->e_nuc_i[i]);
-    fscanf(in_file, "%lf", &wd->j_nuc_i[i]);
-    fscanf(in_file, "%lf", &wd->t_nuc_i[i]);
-    wd->j_nuc_i[i] = round(fabs(wd->j_nuc_i[i]));
-    wd->t_nuc_i[i] = round(fabs(wd->t_nuc_i[i]));
-    if (wd->n_data % 2) {
-      wd->j_nuc_i[i] -= 0.5;
-      wd->t_nuc_i[i] -= 0.5;
-    }
-
-    fgets(buffer, 100, in_file);
-  }
-  wd->n_shell = (int*) malloc(sizeof(int)*wd->n_shells);
-  wd->j_shell = (int*) malloc(sizeof(int)*wd->n_shells);
-  wd->l_shell = (int*) malloc(sizeof(int)*wd->n_shells);
-  wd->jz_shell = (int*) malloc(sizeof(int)*wd->n_shells);
-  wd->tz_shell = (int*) malloc(sizeof(int)*wd->n_shells);
-
-  // Read in shell quantum numbers
-  for (int i = 0; i < wd->n_shells; i++) {
-    fscanf(in_file, "%*d %d %d %d %d %d\n", &wd->n_shell[i], &wd->l_shell[i], &wd->j_shell[i], &wd->jz_shell[i], &wd->tz_shell[i]);
-  }
-  wd->n_data = wd->n_proton_i + wd->n_neutron_i;
-  int* orbitals = (int*) malloc(sizeof(int)*wd->n_data);
-  wd->bc_i = malloc(sizeof(BasisCoeff)*wd->n_states_i);
-  printf("Reading in initial state wavefunction coefficients\n");
-  double norm = 0.0;
-  for (int i = 0; i < wd->n_states_i; i++) {
-    for (int j = 0; j < wd->n_data; j++) {
-      fscanf(in_file, "%d", &orbitals[j]);
-    }
-    int64_t p = p_step(wd->n_shells, wd->n_data, orbitals);
-    wd->bc_i[i].p = p;
-    wd->bc_i[i].wave = (double*) malloc(sizeof(double)*wd->n_eig_i);
-    fgets(buffer, 100, in_file);
-    for (int j = 0; j < wd->n_eig_i; j++) {
-      fscanf(in_file, "%lf\n", &wd->bc_i[i].wave[j]);
-    }
-    norm += pow(wd->bc_i[i].wave[0], 2.0);
-  }
-  printf("Norm: %g\n", norm);
-  qsort(wd->bc_i, wd->n_states_i, sizeof(BasisCoeff), s_compare);  
-
-  fclose(in_file);
-  
-  in_file = fopen("ne20_basis.trwfn", "r");
-  int n_shells_test;
-  fscanf(in_file, "%d\n", &wd->n_proton_f);
-  fscanf(in_file, "%d\n", &wd->n_neutron_f);
-  fgets(buffer, 100, in_file);
-  fgets(buffer, 100, in_file);
-  fgets(buffer, 100, in_file);
-  fscanf(in_file, "%d", &n_shells_test);
-  fgets(buffer, 100, in_file);
-  fgets(buffer, 100, in_file);
-  fscanf(in_file, "%d", &wd->n_states_f);
-  printf("Final state contains %d protons and %d neutrons\n", wd->n_proton_f, wd->n_neutron_f);
-  if (wd->n_shells != n_shells_test) {printf("Error: number of shells does not agree between initial and final state model spaces\n"); exit(0);}
-  printf("The model space has %d shells for a total basis size of %d\n", wd->n_shells, wd->n_states_f);
-  if (wd->n_proton_f + wd->n_neutron_f != wd->n_proton_i + wd->n_neutron_i) {printf("Error: total number of nucleons is not constant\n"); exit(0);}
-  fgets(buffer, 100, in_file);
-  fgets(buffer, 100, in_file);
-  fscanf(in_file, "%lf", &wd->jz_f);
-  fgets(buffer, 100, in_file);
-  fscanf(in_file, "%d", &wd->n_eig_f);
-  printf("Final state file contains %d eigenvalues\n", wd->n_eig_f);
-  fgets(buffer, 100, in_file);
-  wd->e_nuc_f =  (double*) malloc(sizeof(double)*wd->n_eig_f);
-  wd->j_nuc_f =  (double*) malloc(sizeof(double)*wd->n_eig_f);
-  wd->t_nuc_f =  (double*) malloc(sizeof(double)*wd->n_eig_f);
-  for (int i = 0; i < wd->n_eig_f; i++) {
-    fscanf(in_file, "%lf", &wd->e_nuc_f[i]);
-    fscanf(in_file, "%lf", &wd->j_nuc_f[i]);
-    fscanf(in_file, "%lf", &wd->t_nuc_f[i]);
-    wd->j_nuc_f[i] = round(fabs(wd->j_nuc_f[i]));
-    wd->t_nuc_f[i] = round(fabs(wd->t_nuc_f[i]));
-    if (wd->n_data % 2) {
-      wd->j_nuc_f[i] -= 0.5;
-      wd->t_nuc_f[i] -= 0.5;
-    }
-    fgets(buffer, 100, in_file);
-  }
-  for (int i = 0; i < wd->n_shells; i++) {
-    int n_test, l_test, j_test, jz_test, tz_test;
-    fscanf(in_file, "%*d %d %d %d %d %d\n", &n_test, &l_test, &j_test, &jz_test, &tz_test);
-    if ((n_test != wd->n_shell[i]) || (l_test != wd->l_shell[i]) || (j_test != wd->j_shell[i]) || (jz_test != wd->jz_shell[i]) || (tz_test != wd->tz_shell[i])) {
-      printf("Error shell structure is not identical between initial and final state model spaces\n");
-      exit(0);
-    }
-  }
-  wd->bc_f = malloc(sizeof(BasisCoeff)*wd->n_states_f);
-  for (int i = 0; i < wd->n_states_f; i++) {
-    for (int j = 0; j < wd->n_data; j++) {
-      fscanf(in_file, "%d", &orbitals[j]);
-    }
-    int64_t p = p_step(wd->n_shells, wd->n_data, orbitals);
-    wd->bc_f[i].p = p;
-    wd->bc_f[i].wave = (double*) malloc(sizeof(double)*wd->n_eig_f);
-    fgets(buffer, 100, in_file);
-    for (int j = 0; j < wd->n_eig_f; j++) {
-      fscanf(in_file, "%lf\n", &wd->bc_f[i].wave[j]);
-    }
-  }
-  qsort(wd->bc_f, wd->n_states_f, sizeof(BasisCoeff), s_compare);  
-
-  fclose(in_file);
-  in_file = fopen("sd.sps", "r");
-  fgets(buffer, 100, in_file);
-  fscanf(in_file, "%d\n", &wd->n_orbits);
-  printf("The model space contains %d orbitals\n", wd->n_orbits);
-  wd->n_orb = (int*) malloc(sizeof(int)*wd->n_orbits);
-  wd->l_orb = (int*) malloc(sizeof(int)*wd->n_orbits);
-  wd->j_orb = (double*) malloc(sizeof(double)*wd->n_orbits);
-
-  for (int i = 0; i < wd->n_orbits; i++) {
-    double n_orb_f, l_orb_f;
-    fscanf(in_file, "%lf %lf %lf %*d", &n_orb_f, &l_orb_f, &wd->j_orb[i]);
-    wd->n_orb[i] = (int) n_orb_f;
-    wd->l_orb[i] = (int) l_orb_f;
-    printf("%d, %d, %g\n", wd->n_orb[i], wd->l_orb[i], wd->j_orb[i]);
-  }
-  fclose(in_file);
-  return wd;
-}
