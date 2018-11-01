@@ -15,79 +15,74 @@ void one_body_density(int j_op, int t_op) {
   for (int psi_i = 0; psi_i < wd->n_eig_i; psi_i++) {
     double ji = wd->j_nuc_i[psi_i];
     double ti = wd->t_nuc_i[psi_i];
+    double mti = 0.5*(wd->n_proton_i - wd->n_neutron_i);
     // Loop over final eigenstates
     for (int psi_f = 0; psi_f < wd->n_eig_f; psi_f++) {
       double cg_j = 0.0;
       double cg_t = 0.0;
       double jf = wd->j_nuc_f[psi_f];
       double tf = wd->t_nuc_f[psi_f];
+      double mtf = 0.5*(wd->n_proton_f - wd->n_neutron_f);
       cg_j = clebsch_gordan(j_op, ji, jf, 0, 0, 0);
       if (cg_j == 0.0) {continue;}
-      cg_t = clebsch_gordan(t_op, ti, tf, 0, 0, 0);
+      cg_t = clebsch_gordan(t_op, ti, tf, 0, mti, mtf);
       if (cg_t == 0.0) {continue;}
       cg_j *= pow(-1.0, j_op + ji + jf)*sqrt(2*j_op + 1)/sqrt(2*jf + 1);
       cg_t *= pow(-1.0, t_op + ti + tf)*sqrt(2*t_op + 1)/sqrt(2*tf + 1);
-      printf("Initial state: J: %g T: %g Final state: J: %g T: %g\n", ji, ti, jf, tf);
+      printf("Initial state: # %d J: %g T: %g Final state: # %d J: %g T: %g\n", psi_i + 1, ji, ti, psi_f + 1, jf, tf);
       // Loop over final state orbits
       for (int i_orb1 = 0; i_orb1 < wd->n_orbits; i_orb1++) {
+        double j1 = wd->j_orb[i_orb1];
         // Loop over initial state orbits
         for (int i_orb2 = 0; i_orb2 < wd->n_orbits; i_orb2++) {
+          double j2 = wd->j_orb[i_orb2];
           double total = 0.0;
-          // Loop over final state shells
-          for (int a = 0; a < wd->n_shells; a++) {
-            int ij1 = wd->j_shell[a];
-            double j1 = ij1/2.0;
-            if (wd->l_shell[a] != wd->l_orb[i_orb1]) {continue;}
-            if (wd->n_shell[a] != wd->n_orb[i_orb1]) {continue;}
-            if (j1 != wd->j_orb[i_orb1]) {continue;}
-            double mj1 = wd->jz_shell[a]/2.0;
-            double mt1 = wd->tz_shell[a]/2.0;
+          if ((j_op > j1 + j2) || (j_op < abs(j1 - j2))) {continue;}
+          printf("Orbs: %d, %d\n", i_orb1, i_orb2);
+          // Loop over initial state SDs
+          for (int b = 0; b < wd->n_shells; b++) {
+            if (wd->l_shell[b] != wd->l_orb[i_orb2]) {continue;}
+            if (wd->n_shell[b] != wd->n_orb[i_orb2]) {continue;}
+            if (wd->j_shell[b]/2.0 != j2) {continue;}
+            double mj2 = wd->jz_shell[b]/2.0;
+            double mt2 = wd->tz_shell[b]/2.0;
+            int64_t b_b = pow(2, wd->n_shells - (b + 1));
             // Loop over initial state shells
-            for (int b = 0; b < wd->n_shells; b++) {
-              int ij2 = wd->j_shell[b];
-              double j2 = ij2/2.0;
-              if (wd->l_shell[b] != wd->l_orb[i_orb2]) {continue;}
-              if (wd->n_shell[b] != wd->n_orb[i_orb2]) {continue;}
-              if (j2 != wd->j_orb[i_orb2]) {continue;}
-              double mj2 = wd->jz_shell[b]/2.0;
-              double mt2 = wd->tz_shell[b]/2.0;
-              if ((j_op > j1 + j2) || (j_op < abs(j1 - j2))) {continue;}
-              double density = 0.0;
+            for (int a = 0; a < wd->n_shells; a++) {
+              if (wd->l_shell[a] != wd->l_orb[i_orb1]) {continue;}
+              if (wd->n_shell[a] != wd->n_orb[i_orb1]) {continue;}
+              if (wd->j_shell[a]/2.0 != j1) {continue;}
+              double mj1 = wd->jz_shell[a]/2.0;
+              double mt1 = wd->tz_shell[a]/2.0;
               double d2 = clebsch_gordan(j1, j2, j_op, mj1, -mj2, 0);
               d2 *= clebsch_gordan(0.5, 0.5, t_op, mt1, -mt2, 0);
-              d2 *= pow(-1.0, j2 - mj2);
-              d2 *= pow(-1.0, 0.5 - mt2);
+              d2 *= pow(-1.0, j2 - mj2 + 0.5 - mt2);
               if (d2 == 0.0) {continue;}
-              double d1 = 0.0;
-              // Loop over initial state Slater determinants
-              for (int j = 0; j < wd->n_states_i; j++) {
-                int64_t pi = wd->bc_i[j].p;
-                int phase;
-                pi = a_dag_a_op(wd->n_shells, wd->n_data, pi, a + 1, b + 1, &phase);
-                if (pi == 0) {continue;}
 
-                // Loop over final state Slater determinants
+              for (int j = 0; j < wd->n_states_i; j++) {
+                int64_t bi = wd->bc_i[j].b;
+                if (!(b_b & bi)) {continue;} // Check if c_b|p> vanishes
+                int phase = 1;
+                if (a != b) {
+                  bi = a2_op_b(wd->n_shells, bi, a + 1, b + 1, &phase);
+                  if (bi == 0) {continue;}
+                }
+                
                 int64_t i_min = 0;
                 int64_t i_max = wd->n_states_f - 1;
-                int n_it = 0;
                 while (i_max >= i_min) { 
                   int64_t i = floor((i_max + i_min)/2.0);
-                  int64_t pf = wd->bc_f[i].p;
-                  if (n_it > 100) {printf("%ld, %ld, %ld, %ld, %ld\n", pi, pf, i, i_min, i_max);}
-                  if (pf == pi) {
-                    d1 += wd->bc_f[i].wave[psi_f]*wd->bc_i[j].wave[psi_i]*phase;
+                  int64_t bf = wd->bc_f[i].b;
+                  if (bf == bi) {
+                    total += wd->bc_f[i].wave[psi_f]*wd->bc_i[j].wave[psi_i]*phase*d2;
                     break;
-                  } else if (pf > pi) {
+                  } else if (bf > bi) {
                     i_max = i - 1;
                   } else {
                     i_min = i + 1;
                   }
-                  n_it++;
                 }
               }
-              d2 *= d1;
-              density += d2;
-              total += density;
             }
           }
           total /= cg_j*cg_t;
@@ -164,6 +159,7 @@ void two_body_density(int j_op, int t_op) {
                 double mt1 = wd->tz_shell[a]/2.0;
                  // Loop over shells for orbit b
                 for (int b = 0; b < wd->n_shells; b++) {
+                  if (a == b) {continue;}
                   if (wd->l_shell[b] != wd->l_orb[i_orb2]) {continue;}
                   if (wd->n_shell[b] != wd->n_orb[i_orb2]) {continue;}
                   if (wd->j_shell[b]/2.0 != j2) {continue;}
@@ -187,6 +183,7 @@ void two_body_density(int j_op, int t_op) {
                         double mt4 = wd->tz_shell[c]/2.0;
                         // Loop over shells for orbit d
                         for (int d = 0; d < wd->n_shells; d++) {
+                          if (c == d) {continue;}
                           if (wd->l_shell[d] != wd->l_orb[i_orb4]) {continue;}
                           if (wd->n_shell[d] != wd->n_orb[i_orb4]) {continue;}
                           if (wd->j_shell[d]/2.0 != j3) {continue;}
@@ -211,12 +208,22 @@ void two_body_density(int j_op, int t_op) {
                               double d1 = 0.0;
                               // Loop over initial wave function basis
                               for (int j = 0; j < wd->n_states_i; j++) {
-                                int64_t pi = wd->bc_i[j].p;
-                                //int64_t pt = pi;
-                                //int phase1, phase2, phase3, phase4;
+                                int64_t bi = wd->bc_i[j].b;
+                                int64_t b_c = pow(2, wd->n_shells - (c + 1));
+                                if (!(b_c & bi)) {continue;}
+                                int64_t b_d = pow(2, wd->n_shells - (d + 1));
+                                if (!(b_d & bi)) {continue;}
+                                if ((a != c) && (a != d)) {
+                                  int64_t b_a = pow(2, wd->n_shells - (a + 1));
+                                  if (b_a & bi) {continue;}
+                                }
+                                if ((b != c) && (b != d)) {
+                                  int64_t b_b = pow(2, wd->n_shells - (b + 1));
+                                  if (b_b & bi) {continue;}
+                                }
                                 int phase;
-                                pi = a4_op(wd->n_shells, wd->n_data, pi, a + 1, b + 1, c + 1, d + 1, &phase);
-                                if (pi == 0) {continue;}
+                                bi = a4_op_b(wd->n_shells, bi, a + 1, b + 1, c + 1, d + 1, &phase);
+                                if (bi == 0) {continue;}
 
                                 /*pt = a_op(wd->n_shells, wd->n_data, pt, c + 1, &phase1);
                                 if (pt == 0) {printf("is zero\n");}
@@ -232,11 +239,11 @@ void two_body_density(int j_op, int t_op) {
                                 int i_max = wd->n_states_f - 1;
                                 while (i_max >= i_min) {
                                   int i = floor((i_max + i_min)/2.0);
-                                  int64_t pf = wd->bc_f[i].p;
-                                  if (pf == pi) {
+                                  int64_t bf = wd->bc_f[i].b;
+                                  if (bf == bi) {
                                     d1 += wd->bc_f[i].wave[psi_f]*wd->bc_i[j].wave[psi_i]*phase;
                                     break;
-                                  } else if (pf > pi) {
+                                  } else if (bf > bi) {
                                     i_max = i-1;
                                   } else {
                                     i_min = i+1;
@@ -338,11 +345,14 @@ wfnData* read_wfn_data() {
   printf("Reading in initial state wavefunction coefficients\n");
   double norm = 0.0;
   for (int i = 0; i < wd->n_states_i; i++) {
+    int64_t b = 0;
     for (int j = 0; j < wd->n_data; j++) {
       fscanf(in_file, "%d", &orbitals[j]);
+      b += pow(2, wd->n_shells - orbitals[j]);
     }
     int64_t p = p_step(wd->n_shells, wd->n_data, orbitals);
     wd->bc_i[i].p = p;
+    wd->bc_i[i].b = b;
     wd->bc_i[i].wave = (double*) malloc(sizeof(double)*wd->n_eig_i);
     fgets(buffer, 100, in_file);
     for (int j = 0; j < wd->n_eig_i; j++) {
@@ -421,10 +431,13 @@ wfnData* read_wfn_data() {
     }
     wd->bc_f = malloc(sizeof(BasisCoeff)*wd->n_states_f);
     for (int i = 0; i < wd->n_states_f; i++) {
+      int64_t b = 0;
       for (int j = 0; j < wd->n_data; j++) {
         fscanf(in_file, "%d", &orbitals[j]);
+        b += pow(2, wd->n_shells - orbitals[j]);
       }
       int64_t p = p_step(wd->n_shells, wd->n_data, orbitals);
+      wd->bc_f[i].b = b;
       wd->bc_f[i].p = p;
       wd->bc_f[i].wave = (double*) malloc(sizeof(double)*wd->n_eig_f);
       fgets(buffer, 100, in_file);
@@ -459,8 +472,8 @@ wfnData* read_wfn_data() {
 int s_compare(const void * a, const void * b) {
   BasisCoeff *basisa = (BasisCoeff *)a;
   BasisCoeff *basisb = (BasisCoeff *)b;
-  int64_t pa = basisa->p;
-  int64_t pb = basisb->p;
+  int64_t pa = basisa->b;
+  int64_t pb = basisb->b;
   int s = 0;
   if (pa - pb > 0) {s = 1;}
   if (pa - pb < 0) {s = -1;}

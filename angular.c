@@ -16,9 +16,11 @@ double clebsch_gordan(double j1, double j2, double j, double m1, double m2, doub
   // the coupled basis (j1,j2; j,m)
   double cg = 0.0;
   if (((m1 + m2) != m) || (j > (j1 + j2)) || (j < abs(j1-j2))) {return cg;}
-  int s;
   double f = 0.0;
-  for (s = 0; s < 100; s++) {
+  int s_max = MIN(j1 - m1, j - m);
+  int s_min = MAX(0, ceil(j -j2 - m1));
+//  printf("Min/Max: %d %d\n", s_min, s_max);
+  for (int s = s_min; s <= s_max; s++) {
     double d1 = j1 - m1 -s;
     double d2 = j - m - s;
     double d3 = j2 - j + m1 + s;

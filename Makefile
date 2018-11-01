@@ -1,4 +1,4 @@
-CC=gcc
+CC=gcc -m64
 CFLAGS=-c -Wall -lm -ldl
 
 all: nuclear

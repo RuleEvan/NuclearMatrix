@@ -22,7 +22,7 @@
 // FILE SETUP
 #define DENSITY_FILE "ne20.dens"
 #define WFN_FILE_INITIAL "ne20_basis.trwfn"
-#define WFN_FILE_FINAL "mg20_basis.trwfn"
+#define WFN_FILE_FINAL "ne20_basis.trwfn"
 #define ORBIT_FILE "sd.sps"
 
 // Technical parameters

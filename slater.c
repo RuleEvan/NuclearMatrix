@@ -149,6 +149,7 @@ int64_t a_op(int n_s, int n_p, int64_t p, int n_op, int *phase) {
   return pp;
 }
 
+
 int64_t a_dag_op(int n_s, int n_p, int64_t p, int n_op, int *phase) {
   // Acts a creation operator on the orbital in position n_op
   *phase = 1;
@@ -172,48 +173,40 @@ int64_t a_dag_a_op(int n_s, int n_p, int64_t p, int n_a, int n_b, int *phase) {
   int k = 0;
   int kf = 0; // Tracks particles in new SD
   // k tracks particles in old SD
-  while ((k < n_p) || (kf < n_p)) {
-    for (int j = j_min; j <= n_s; j++) {
-      // Check if the state is present in the old SD
-      if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
-        // Check if the state is to be added but not deleted first
-        if ((j == n_a) && (j != n_b)) {return 0;}
-        // Otherwise check if the state is to be deleted
-        if (j != n_b) {
-        // Found normal orbital
-          if (kf >= n_p) {return 0;}
-          // Adjust final SD using j and kf
-          pf -= n_choose_k(n_s - j, n_p - kf);
-          // Adjust old SD using j and k
-          q -= n_choose_k(n_s - j, n_p  - k);
-          j_min = j+1;
-          if (j < n_a) {*phase *= -1;}
-          if (j < n_b) {*phase *= -1;}
-          // Increment kf
-          kf++;
-          k++;
-          // Break to increment k
-          break;
-        } else if (n_a == n_b) {
-          // Found orbital where a=b
-          a_found = 1;
-          b_found = 1;
-          if (kf >= n_p) {return 0;}
-          q -= n_choose_k(n_s - j, n_p - k);
-          pf -= n_choose_k(n_s - j, n_p - kf);
-          j_min = j+1;
-          kf++;
-          k++;
-          break;
-        } else {
-        //  Found orbital to delete
-          b_found = 1;
-          j_min = j + 1;
-          q -= n_choose_k(n_s - j, n_p - k);
-          k++;
-          break;
-        }
+  for (int j = 1; j <= n_s; j++) {
+    // Check if the state is present in the old SD
+    if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
+      // Check if the state is to be added but not deleted first
+      if ((j == n_a) && (j != n_b)) {return 0;}
+      // Otherwise check if the state is to be deleted
+      if (j != n_b) {
+      // Found normal orbital
+        if (kf >= n_p) {return 0;}
+        // Adjust final SD using j and kf
+        pf -= n_choose_k(n_s - j, n_p - kf);
+        // Adjust old SD using j and k
+        q -= n_choose_k(n_s - j, n_p  - k);
+        if (j < n_a) {*phase *= -1;}
+        if (j < n_b) {*phase *= -1;}
+        // Increment kf
+        kf++;
+        k++;
+      } else if (n_a == n_b) {
+        // Found orbital where a=b
+        a_found = 1;
+        b_found = 1;
+        if (kf >= n_p) {return 0;}
+        q -= n_choose_k(n_s - j, n_p - k);
+        pf -= n_choose_k(n_s - j, n_p - kf);
+        kf++;
+        k++;
+      } else {
+      //  Found orbital to delete
+        b_found = 1;
+        q -= n_choose_k(n_s - j, n_p - k);
+        k++;
       }
+    } else {
       // Unoccupied states reach this point
       // Check if state is to be deleted
       if (j == n_b) {return 0;}
@@ -222,20 +215,104 @@ int64_t a_dag_a_op(int n_s, int n_p, int64_t p, int n_a, int n_b, int *phase) {
       //  printf("Found orbital to add a: %d\n", j);
         a_found = 1;
         if (kf >= n_p) {return 0;}
-        j_min = j+1;
         pf -= n_choose_k(n_s - j, n_p - kf);
         kf++;
-        continue;
       } 
     }
   }
   if (!(a_found && b_found)) {return 0;}
-  //if (kf != n_p) {printf("Error %d\n", kf);}
+  if (kf != n_p) {return 0;}
   if (n_a == n_b) {pf = p;}
 
   return pf;
 }
 
+int64_t a2_op_b(int n_s, int64_t b, int n_a, int n_b, int *phase) {
+  *phase = 1;
+  if (n_a == n_b) {return b;}
+  int64_t b_a = pow(2, n_s - n_a);
+  int64_t b_b = pow(2, n_s - n_b);
+  if (b_a & b) {return 0;}
+  int64_t bf = b - b_b + b_a;
+
+  int64_t bp = 0;
+  if (b_a > b_b) {
+    bp = b_a - 2*b_b;
+  } else {
+    bp = b_b - 2*b_a;
+  }
+  bp = bp & b;
+  *phase = (int) pow(-1.0, bit_count(bp));
+
+  return bf;
+}
+
+int64_t a4_op_b(int n_s, int64_t b, int n_a, int n_b, int n_c, int n_d, int* phase) {
+  *phase = 1;
+  if (((n_a == n_c) && (n_b == n_d)) || ((n_a == n_d) && (n_b == n_c))) {return b;}
+
+  int64_t b_a = pow(2, n_s - n_a);
+  int64_t b_b = pow(2, n_s - n_b);
+  int64_t b_c = pow(2, n_s - n_c);
+  int64_t b_d = pow(2, n_s - n_d);
+
+  int64_t bf = b - b_c - b_d + b_a + b_b;
+  int64_t bp;
+
+  if (n_a == n_c) {
+   if (b_d > b_b) {
+     bp = b_d - 2*b_b;
+    } else {
+      bp = b_b - 2*b_d;
+    }
+  } else if (n_a == n_d) {
+   if (b_c > b_b) {
+     bp = b_c - 2*b_b;
+   } else {
+     bp = b_b - 2*b_c;
+   }
+ } else if (n_b == n_c) {
+   if (b_a > b_d) {
+     bp = b_a - 2*b_d;
+   } else {
+     bp = b_d - 2*b_a;
+   }
+ } else if (n_b == n_d) {
+   if (b_a > b_c) {
+      bp = b_a - 2*b_c;
+   } else {
+      bp = b_c - 2*b_a;
+   }
+ } else {
+    int* n_sort = (int*) malloc(sizeof(int)*4);
+    n_sort[0] = n_a;
+    n_sort[1] = n_b;
+    n_sort[2] = n_c;
+    n_sort[3] = n_d;
+    
+    qsort(n_sort, 4, sizeof(int), i_compare);
+    bp = n_sort[3] - 2*n_sort[0] - n_sort[1] - n_sort[2];
+    free(n_sort);
+  }
+
+  bp = bp & b;
+  *phase = (int) pow(-1.0, bit_count(bp)); 
+
+return bf;
+}
+
+int i_compare(const void * a, const void * b) {
+  return (*(int*)a - *(int*)b);
+}
+
+int bit_count(int64_t b) {
+  int count = 0;
+  while (b != 0) {
+    b = b & (b - 1);
+    count++;
+  }
+  return count;
+}
 int64_t a4_op(int n_s, int n_p, int64_t p, int n_a, int n_b, int n_c, int n_d, int *phase) {
   // Acts the operator a^(dag)(a)a^(dag)(b)a(d)a(c) on the given SD
   *phase = 1;

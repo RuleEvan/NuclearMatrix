@@ -5,6 +5,7 @@
 typedef struct sBasisCoeff 
 {
   int64_t p;
+  int64_t b;
   double *wave;
 } BasisCoeff;
 
