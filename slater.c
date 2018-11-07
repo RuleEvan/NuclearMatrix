@@ -1,6 +1,6 @@
 #include "slater.h"
 
-int64_t p_step(int n_s, int n_p, int *m_p) {
+unsigned int p_step(int n_s, int n_p, int *m_p) {
 /* Compute the p-coefficient (see Whitehead) associated with a
    given Slater determinant
 
@@ -12,14 +12,14 @@ int64_t p_step(int n_s, int n_p, int *m_p) {
   Output(s): 
     int p: p-coefficient of the given Slater determinant
 */
-  int64_t p = gsl_sf_choose(n_s, n_p);
+  unsigned int p = gsl_sf_choose(n_s, n_p);
   for (int i = 0; i < n_p; i++) {
     p -= n_choose_k(n_s-m_p[i], n_p - i);
   }
   return p;
 }
 
-void orbitals_from_p(int64_t p, int n_s, int n_p, int* orbitals) {
+void orbitals_from_p(unsigned int p, int n_s, int n_p, int* orbitals) {
 /* Given a p-coefficient, reconstruct the orbitals occupied in
    the corresponding Slater determinant
 
@@ -33,7 +33,7 @@ void orbitals_from_p(int64_t p, int n_s, int n_p, int* orbitals) {
   Output(s): None
 
 */
-  int64_t q = n_choose_k(n_s, n_p) - p;
+  unsigned int q = n_choose_k(n_s, n_p) - p;
   int j_min = 1;
   for (int k = 0; k < n_p; k++) {
     for (int j = j_min; j <= n_s; j++) {
@@ -48,9 +48,9 @@ void orbitals_from_p(int64_t p, int n_s, int n_p, int* orbitals) {
   return;
 }
 
-int m_from_p(int64_t p, int n_s, int n_p, int* m_shell) {
+int m_from_p(unsigned int p, int n_s, int n_p, int* m_shell) {
   // Returns the total magnetic angular momentum of a given p-value
-  int64_t q = n_choose_k(n_s, n_p) - p;
+  unsigned int q = n_choose_k(n_s, n_p) - p;
   int j_min = 1;
   int m_tot = 0;
   for (int k = 0; k < n_p; k++) {
@@ -66,12 +66,12 @@ int m_from_p(int64_t p, int n_s, int n_p, int* m_shell) {
   return m_tot;
 }
 
-void orbitals_from_binary(int n_s, int n_p, int64_t b, int* orbitals) {
+void orbitals_from_binary(int n_s, int n_p, unsigned int b, int* orbitals) {
   // Computes the orbital of each particle from the corresponding
   // binary integer
   int j = n_p - 1;
   for (int i = 0; i < n_s; i++) {
-    if (b % (int64_t) pow(2, i + 1) != 0) { 
+    if (b % (unsigned int) pow(2, i + 1) != 0) { 
       orbitals[j] = n_s - i;
       b -= pow(2, i);
       j--;
@@ -80,30 +80,30 @@ void orbitals_from_binary(int n_s, int n_p, int64_t b, int* orbitals) {
   return;
 }
 
-int64_t bin_from_orbitals(int n_s, int n_p, int* orbitals) {
-  int64_t b = 0;
+unsigned int bin_from_orbitals(int n_s, int n_p, int* orbitals) {
+  unsigned int b = 0;
   for (int i = 0; i < n_p; i++) {
     b += pow(2, n_s - orbitals[i]);
   }
   return b;
 }
 
-int64_t p_from_binary(int n_s, int n_p, int64_t b) {
+unsigned int p_from_binary(int n_s, int n_p, unsigned int b) {
   // Computes the p-coefficient from the corresponding binary number
   int* orbitals = (int*) malloc(sizeof(int)*n_p);
   orbitals_from_binary(n_s, n_p, b, orbitals);
-  int64_t p = p_step(n_s, n_p, orbitals);
+  unsigned int p = p_step(n_s, n_p, orbitals);
   free(orbitals);
 
   return p;
 }
 
 
-int64_t bin_from_p(int n_s, int n_p, int64_t p) {
+unsigned int bin_from_p(int n_s, int n_p, unsigned int p) {
   // Returns the binary SD from the corresponding p-value
-  int64_t q = n_choose_k(n_s, n_p) - p;
+  unsigned int q = n_choose_k(n_s, n_p) - p;
   int j_min = 1;
-  int64_t bin = 0;
+  unsigned int bin = 0;
   for (int k = 0; k < n_p; k++) {
     for (int j = j_min; j <= n_s; j++) {
       if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
@@ -117,12 +117,12 @@ int64_t bin_from_p(int n_s, int n_p, int64_t p) {
   return bin;
 }
 
-int64_t bin_phase_from_p(int n_s, int n_p, int64_t p, int n_op, int* phase) {
+unsigned int bin_phase_from_p(int n_s, int n_p, unsigned int p, int n_op, int* phase) {
   // Computes the binary SD and corresponding phase from acting an
   // operator at position n_op
-  int64_t q = n_choose_k(n_s, n_p) - p;
+  unsigned int q = n_choose_k(n_s, n_p) - p;
   int j_min = 1;
-  int64_t bin = 0;
+  unsigned int bin = 0;
   *phase = 1;
   for (int k = 0; k < n_p; k++) {
     for (int j = j_min; j <= n_s; j++) {
@@ -138,33 +138,33 @@ int64_t bin_phase_from_p(int n_s, int n_p, int64_t p, int n_op, int* phase) {
   return bin;
 }
 
-int64_t a_op(int n_s, int n_p, int64_t p, int n_op, int *phase) {
+unsigned int a_op(int n_s, int n_p, unsigned int p, int n_op, int *phase) {
   // Acts an annihilation operator on the orbital in position n_op
   *phase = 1;
-  int64_t bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
-  int64_t check = pow(2, n_s - n_op);
+  unsigned int bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
+  unsigned int check = pow(2, n_s - n_op);
   if (!(bin & check)) {return 0;}
   bin -= check;
-  int64_t pp = p_from_binary(n_s, n_p - 1, bin);
+  unsigned int pp = p_from_binary(n_s, n_p - 1, bin);
   return pp;
 }
 
 
-int64_t a_dag_op(int n_s, int n_p, int64_t p, int n_op, int *phase) {
+unsigned int a_dag_op(int n_s, int n_p, unsigned int p, int n_op, int *phase) {
   // Acts a creation operator on the orbital in position n_op
   *phase = 1;
-  int64_t bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
-  int64_t check = pow(2, n_s - n_op);
+  unsigned int bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
+  unsigned int check = pow(2, n_s - n_op);
   if (bin & check) {return 0;}
   bin += check;
-  int64_t pp = p_from_binary(n_s, n_p + 1, bin);
+  unsigned int pp = p_from_binary(n_s, n_p + 1, bin);
   return pp;
 }
 
-int64_t a_dag_a_op(int n_s, int n_p, int64_t p, int n_a, int n_b, int *phase) {
+unsigned int a_dag_a_op(int n_s, int n_p, unsigned int p, int n_a, int n_b, int *phase) {
   *phase = 1;
-  int64_t q = n_choose_k(n_s, n_p) - p;
-  int64_t pf = n_choose_k(n_s, n_p);
+  unsigned int q = n_choose_k(n_s, n_p) - p;
+  unsigned int pf = n_choose_k(n_s, n_p);
   int j_min = 1;
   //if (n_a > n_b) {*phase = -1;}
 //  printf("n_a: %d n_b: %d\n", n_a, n_b);
@@ -227,15 +227,27 @@ int64_t a_dag_a_op(int n_s, int n_p, int64_t p, int n_a, int n_b, int *phase) {
   return pf;
 }
 
-int64_t a2_op_b(int n_s, int64_t b, int n_a, int n_b, int *phase) {
+unsigned int a_op_b(int n_s, unsigned int b, int n_a, int *phase) {
+  *phase = 1;
+  unsigned int b_a = pow(2, n_s - n_a);
+  if (!(b_a & b)) {return 0;}
+  unsigned int bf = b - b_a;
+  unsigned int bp = pow(2, n_s) - b_a;
+  bp = bp & b;
+  *phase = pow(-1, bit_count(bp));
+
+  return bf;
+}
+
+unsigned int a2_op_b(int n_s, unsigned int b, int n_a, int n_b, int *phase) {
   *phase = 1;
   if (n_a == n_b) {return b;}
-  int64_t b_a = pow(2, n_s - n_a);
-  int64_t b_b = pow(2, n_s - n_b);
+  unsigned int b_a = pow(2, n_s - n_a);
+  unsigned int b_b = pow(2, n_s - n_b);
   if (b_a & b) {return 0;}
-  int64_t bf = b - b_b + b_a;
+  unsigned int bf = b - b_b + b_a;
 
-  int64_t bp = 0;
+  unsigned int bp = 0;
   if (b_a > b_b) {
     bp = b_a - 2*b_b;
   } else {
@@ -247,65 +259,55 @@ int64_t a2_op_b(int n_s, int64_t b, int n_a, int n_b, int *phase) {
   return bf;
 }
 
-int64_t a4_op_b(int n_s, int64_t b, int n_a, int n_b, int n_c, int n_d, int* phase) {
+unsigned int a4_op_b(int n_s, unsigned int b, int n_a, int n_b, int n_c, int n_d, int* phase) {
   *phase = 1;
-  if (((n_a == n_c) && (n_b == n_d)) || ((n_a == n_d) && (n_b == n_c))) {return b;}
+  if ((n_a == n_c) && (n_b == n_d)) {return b;}
+  if ((n_a == n_d) && (n_b == n_c)) {*phase = -1; return b;}
 
-  int64_t b_a = pow(2, n_s - n_a);
-  int64_t b_b = pow(2, n_s - n_b);
-  int64_t b_c = pow(2, n_s - n_c);
-  int64_t b_d = pow(2, n_s - n_d);
+  unsigned int b_a = pow(2, n_s - n_a);
+  unsigned int b_b = pow(2, n_s - n_b);
+  unsigned int b_c = pow(2, n_s - n_c);
+  unsigned int b_d = pow(2, n_s - n_d);
 
-  int64_t bf = b - b_c - b_d + b_a + b_b;
-  int64_t bp;
-
-  if (n_a == n_c) {
-   if (b_d > b_b) {
-     bp = b_d - 2*b_b;
+  unsigned int bf = b + b_a + b_b - b_c - b_d;
+  unsigned int bp1, bp2;
+  
+  if (n_b == n_d) {
+    if (b_a > b_c) {
+      bp2 = b_a - 2*b_c;
     } else {
-      bp = b_b - 2*b_d;
+      bp2 = b_c - 2*b_a;
     }
-  } else if (n_a == n_d) {
-   if (b_c > b_b) {
-     bp = b_c - 2*b_b;
-   } else {
-     bp = b_b - 2*b_c;
-   }
- } else if (n_b == n_c) {
-   if (b_a > b_d) {
-     bp = b_a - 2*b_d;
-   } else {
-     bp = b_d - 2*b_a;
-   }
- } else if (n_b == n_d) {
-   if (b_a > b_c) {
-      bp = b_a - 2*b_c;
-   } else {
-      bp = b_c - 2*b_a;
-   }
- } else {
-    int* n_sort = (int*) malloc(sizeof(int)*4);
-    n_sort[0] = n_a;
-    n_sort[1] = n_b;
-    n_sort[2] = n_c;
-    n_sort[3] = n_d;
-    
-    qsort(n_sort, 4, sizeof(int), i_compare);
-    bp = n_sort[3] - 2*n_sort[0] - n_sort[1] - n_sort[2];
-    free(n_sort);
+    bp2 = bp2 & b;
+    *phase = pow(-1, bit_count(bp2));
+  } else {
+    if (b_b == b_c) {
+      bp1 = 0;
+    } else if (b_c > b_b) {
+      bp1 = b_c - 2*b_b;
+    } else {
+      bp1 = b_b - 2*b_c;
+    }
+    if (b_a == b_d) {
+      bp2 = 0;
+    } else if (b_d > b_a) {
+      bp2 = b_d - 2*b_a;
+    } else {
+      bp2 = b_a - 2*b_d;
+    }
+    if (b_b != b_c) {bp1 = bp1 & b;}
+    if (b_a != b_d) {bp2 = bp2 & (b + b_b - b_c);}
+    *phase = pow(-1, 1 + bit_count(bp1 ^ bp2));
   }
 
-  bp = bp & b;
-  *phase = (int) pow(-1.0, bit_count(bp)); 
-
-return bf;
+  return bf;
 }
 
 int i_compare(const void * a, const void * b) {
   return (*(int*)a - *(int*)b);
 }
 
-int bit_count(int64_t b) {
+int bit_count(unsigned int b) {
   int count = 0;
   while (b != 0) {
     b = b & (b - 1);
@@ -313,13 +315,13 @@ int bit_count(int64_t b) {
   }
   return count;
 }
-int64_t a4_op(int n_s, int n_p, int64_t p, int n_a, int n_b, int n_c, int n_d, int *phase) {
+unsigned int a4_op(int n_s, int n_p, unsigned int p, int n_a, int n_b, int n_c, int n_d, int *phase) {
   // Acts the operator a^(dag)(a)a^(dag)(b)a(d)a(c) on the given SD
   *phase = 1;
   if (n_c == n_d) {return 0;}
   if (n_a == n_b) {return 0;}
-  int64_t q = n_choose_k(n_s, n_p) - p;
-  int64_t pf = n_choose_k(n_s, n_p);
+  unsigned int q = n_choose_k(n_s, n_p) - p;
+  unsigned int pf = n_choose_k(n_s, n_p);
   // Determine phase factors
 /*  if (n_d > n_c) {*phase *= -1;}
   if (n_b > n_c) {*phase *= -1;}
@@ -402,10 +404,10 @@ int64_t a4_op(int n_s, int n_p, int64_t p, int n_a, int n_b, int n_c, int n_d, i
 }
 
 
-int64_t n_choose_k(int n, int k) {
+unsigned int n_choose_k(int n, int k) {
   // Computes the binomial coefficient n choose k with the proper
   // rule when k > n (Whitehead)
-  int64_t c = 0;
+  unsigned int c = 0;
   if (k > n) {return c;}
   c = gsl_sf_choose(n, k);
   return c;

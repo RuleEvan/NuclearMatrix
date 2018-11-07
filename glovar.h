@@ -21,9 +21,9 @@
 
 // FILE SETUP
 #define DENSITY_FILE "ne20.dens"
-#define WFN_FILE_INITIAL "ne20_basis.trwfn"
-#define WFN_FILE_FINAL "ne20_basis.trwfn"
-#define ORBIT_FILE "sd.sps"
+#define WFN_FILE_INITIAL "ge76_basis.trwfn"
+#define WFN_FILE_FINAL "ge76_basis.trwfn"
+#define ORBIT_FILE "GCN2850.sps"
 
 // Technical parameters
 #define R_SPL_MIN 0.0001
