@@ -46,6 +46,7 @@ typedef struct wfnData
 void one_body_density(int j_op, int t_op);
 void two_body_density(int j_op, int t_op);
 wfnData* read_wfn_data();
-
-
+double trace_a4_nodes(sd_list* node1, int a, int b, int n_sds_int2, wfnData* wd, int* list_f, wf_list** hash_i, wf_list** hash_f, int psi_i, int psi_f);
+double trace_a22_nodes(sd_list* node1, int a, int b, int n_sds_int2, wfnData* wd, int* list_f, wf_list** hash_i, wf_list** hash_f, int psi_i, int psi_f);
+double trace_a20_nodes(sd_list** p1_list_i, sd_list** n1_list_i, int* p1_list_f, int* n1_list_f, int a, int b, int c, int d, int n_sds_p_int1, int n_sds_n_int1, wfnData* wd, int psi_i, int psi_f); 
 #endif

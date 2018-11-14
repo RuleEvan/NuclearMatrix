@@ -11,19 +11,27 @@ void one_body_density(int j_op, int t_op) {
   FILE* out_file;
   out_file = fopen("ge76_density_1", "w");
   printf("j_op: %d t_op: %d\n", j_op, t_op);
+
+  // Determine the number of intermediate proton SDs
   int* max_state = (int*) malloc(sizeof(int)*(wd->n_proton_i - 1));
   for (int i = 0; i < wd->n_proton_i - 1; i++) {
     max_state[i] = wd->n_shells - (wd->n_proton_i - i - 2);
   }
   int n_sds_p_int = p_step(wd->n_shells, wd->n_proton_i - 1, max_state);
   printf("Num intermediate proton sds: %d\n", n_sds_p_int);
-  max_state = realloc(max_state, sizeof(int)*(wd->n_neutron_i - 1));
-  for (int i = 0; i < wd->n_neutron_i - 1; i++) {
-    max_state[i] = wd->n_shells - (wd->n_neutron_i - i - 2);
+  int n_sds_n_int;
+  if (wd->n_neutron_i == 0) {
+    n_sds_n_int = 0;
+  } else {
+    // Determine the number of intermediate neutron SDs
+    max_state = realloc(max_state, sizeof(int)*(wd->n_neutron_i - 1));
+    for (int i = 0; i < wd->n_neutron_i - 1; i++) {
+      max_state[i] = wd->n_shells - (wd->n_neutron_i - i - 2);
+    }
+    n_sds_n_int = p_step(wd->n_shells, wd->n_neutron_i - 1, max_state);
+    free(max_state);
   }
-  int n_sds_n_int = p_step(wd->n_shells, wd->n_neutron_i - 1, max_state);
   printf("Num intermediate neutron sds: %d\n", n_sds_n_int);
-  free(max_state);
 
   sd_list **p_list_i = (sd_list**) malloc(sizeof(sd_list*)*wd->n_shells);
   sd_list **n_list_i = (sd_list**) malloc(sizeof(sd_list*)*wd->n_shells);
@@ -34,7 +42,7 @@ void one_body_density(int j_op, int t_op) {
     p_list_i[a] = create_sd_node(0,0,1,NULL);
     for (int j = 1; j <= wd->n_sds_p_i; j++) {
       int phase;
-      unsigned int pn = a_op(wd->n_shells, wd->n_proton_i, j, a + 1, &phase);
+      unsigned int pn = a_op(wd->n_shells, wd->n_proton_i, j, a + 1, &phase, 1);
       if (pn == 0) {continue;}
       sd_append(p_list_i[a], j, pn, phase);
     }
@@ -45,7 +53,7 @@ void one_body_density(int j_op, int t_op) {
   for (int a = 0; a < wd->n_shells; a++) {
     for (int j = 1; j <= wd->n_sds_p_f; j++) {
       int phase;
-      unsigned int pn = a_op(wd->n_shells, wd->n_proton_f, j, a + 1, &phase);
+      unsigned int pn = a_op(wd->n_shells, wd->n_proton_f, j, a + 1, &phase, 1);
       if (pn == 0) {continue;}
       p_list_f[(pn - 1) + a*n_sds_p_int] = phase*j;
     }
@@ -55,10 +63,10 @@ void one_body_density(int j_op, int t_op) {
   printf("Building initial state neutron jumps...\n");
   
   for (int a = 0; a < wd->n_shells; a++) {
-    n_list_i[a] = create_sd_node(0,0,1,NULL);;
+    n_list_i[a] = create_sd_node(0,0,1,NULL);
     for (int j = 1; j <= wd->n_sds_n_i; j++) {
       int phase;
-      int pf = a_op(wd->n_shells, wd->n_neutron_i, j, a + 1, &phase);
+      int pf = a_op(wd->n_shells, wd->n_neutron_i, j, a + 1, &phase, 1);
       if (pf == 0) {continue;}
       sd_append(n_list_i[a], j, pf, phase);
     }
@@ -70,7 +78,7 @@ void one_body_density(int j_op, int t_op) {
   for (int a = 0; a < wd->n_shells; a++) {
     for (int j = 1; j <= wd->n_sds_n_f; j++) {
       int phase;
-      unsigned int pn = a_op(wd->n_shells, wd->n_neutron_f, j, a + 1, &phase);
+      unsigned int pn = a_op(wd->n_shells, wd->n_neutron_f, j, a + 1, &phase, 1);
       if (pn == 0) {continue;}
       n_list_f[(pn - 1) + a*n_sds_n_int] = phase*j;
     }
@@ -212,20 +220,20 @@ void one_body_density(int j_op, int t_op) {
               if (d2 != 0.0) {
 
                 d1 = 0.0;
-                sd_list* node = n_list_i[b]->next;
+                sd_list* node = p_list_i[b]->next;
                 while (node != NULL) {
                   int ppf = node->pn;
                   int ppi = node->pi; 
                   int phase1 = node->phase;
                   // Get list of n_f associated to p_f
-                  wf_list *node2 = wd->n_hash_f[ppf - 1];
+                  wf_list *node2 = wd->p_hash_f[ppf - 1];
                   unsigned int index_i;
                   unsigned int index_f;
                   // Loop over n_f 
                   while (node2 != NULL) {
                     index_i = node2->index;
                     unsigned int pnf = node2->p;
-                    wf_list *node3 = wd->n_hash_i[ppi - 1];
+                    wf_list *node3 = wd->p_hash_i[ppi - 1];
                     while (node3 != NULL) {
                       unsigned int pni = node3->p;
                       int phase2 = 1;
@@ -264,95 +272,236 @@ void two_body_density(int j_op, int t_op) {
   // Read in data  
   wfnData *wd = read_wfn_data();
   double* j_store = (double*) malloc(sizeof(double)*4);
-  // Loop over initial many-body wave functions
-  int* max_state = (int*) malloc(sizeof(int)*(wd->n_proton_i - 1));
-  for (int i = 0; i < wd->n_proton_i - 1; i++) {
-    max_state[i] = wd->n_shells - (wd->n_proton_i - i - 2);
+
+  // Determine number of intermediate proton SDs
+  // after removing two protons
+  int* max_state = (int*) malloc(sizeof(int)*(wd->n_proton_f - 2));
+  for (int i = 0; i < wd->n_proton_f - 2; i++) {
+    max_state[i] = wd->n_shells - (wd->n_proton_f - i - 3);
   }
-  int n_sds_p_int = p_step(wd->n_shells, wd->n_proton_i - 1, max_state);
-  printf("Num intermediate proton sds: %d\n", n_sds_p_int);
-  max_state = realloc(max_state, sizeof(int)*(wd->n_neutron_i - 1));
-  for (int i = 0; i < wd->n_neutron_i - 1; i++) {
-    max_state[i] = wd->n_shells - (wd->n_neutron_i - i - 2);
+  int n_sds_p_int2 = p_step(wd->n_shells, wd->n_proton_f - 2, max_state);
+
+  // Determine number of intermediate proton SDs
+  // after removing one proton
+  max_state = realloc(max_state, sizeof(int)*(wd->n_proton_f - 1));
+  for (int i = 0; i < wd->n_proton_f - 1; i++) {
+    max_state[i] = wd->n_shells - (wd->n_proton_f - i - 2);
   }
-  int n_sds_n_int = p_step(wd->n_shells, wd->n_neutron_i - 1, max_state);
-  printf("Num intermediate neutron sds: %d\n", n_sds_n_int);
+  int n_sds_p_int1 = p_step(wd->n_shells, wd->n_proton_f - 1, max_state);
+
+  // Determine the number of intermediate neutron SDs after 
+  // subtracting two neutrons
+  int n_sds_n_int1, n_sds_n_int2;
+  if (wd->n_neutron_f == 0) {
+    n_sds_n_int1 = 1;
+    n_sds_n_int2 = 1;
+  } else if (wd->n_neutron_f == 1) {
+    n_sds_n_int2 = 1;
+    max_state = realloc(max_state, sizeof(int)*(wd->n_neutron_f - 1));
+    for (int i = 0; i < wd->n_neutron_f - 1; i++) {
+      max_state[i] = wd->n_shells - (wd->n_neutron_f - i - 2);
+    }
+    n_sds_n_int1 = p_step(wd->n_shells, wd->n_neutron_f - 1, max_state);
+  } else {
+    max_state = realloc(max_state, sizeof(int)*(wd->n_neutron_f - 2));
+    for (int i = 0; i < wd->n_neutron_f - 2; i++) {
+      max_state[i] = wd->n_shells - (wd->n_neutron_f - i - 3);
+    }
+    n_sds_n_int2 = p_step(wd->n_shells, wd->n_neutron_f - 2, max_state);
+
+    // Determine number of intermediate neutron SDs
+    // after removing one neutron
+    max_state = realloc(max_state, sizeof(int)*(wd->n_neutron_f - 1));
+    for (int i = 0; i < wd->n_neutron_f - 1; i++) {
+      max_state[i] = wd->n_shells - (wd->n_neutron_f - i - 2);
+    }
+    n_sds_n_int1 = p_step(wd->n_shells, wd->n_neutron_f - 1, max_state);
+  }
   free(max_state);
-
+  
+  printf("Intermediate SDs: p1: %d n1: %d, p2: %d, n2: %d\n", n_sds_p_int1, n_sds_n_int1, n_sds_p_int2, n_sds_n_int2);
   int ns = wd->n_shells;
-  sd_list **p_list_i = (sd_list**) malloc(sizeof(sd_list*)*ns*(ns + 1)/2);
-  sd_list **n_list_i = (sd_list**) malloc(sizeof(sd_list*)*ns*(ns + 1)/2);
-  printf("Building initial state proton jumps...\n");
-  for (int c = 0; c < ns; c++) {
-    for (int d = 0; d < c; d++) {
-      p_list_i[c + d*ns] = create_sd_node(0,0,1,NULL);
-      for (int j = 1; j <= wd->n_sds_p_i; j++) {
-        int phase1, phase2;
-        int pf = a_op(ns, wd->n_proton_i, j, c + 1, &phase1);
-        if (pf == 0) {continue;}
-        pf = a_op(ns, wd->n_proton_i - 1, pf, d + 1, &phase2);
-        if (pf == 0) {continue;}
-        sd_append(p_list_i[c + d*ns], j, pf, phase1*phase2);
-      }
-    }
-  }
-  printf("Done.\n");
-  printf("Building final state proton jumps...\n");
-  int *p_list_f = (int*) calloc(ns*(ns + 1)/2*n_sds_p_int, sizeof(int));
-  for (int a = 0; a < ns; a++) {
-    for (int b = 0; b < a; b++) {
-      for (int j = 1; j <= wd->n_sds_p_f; j++) {
-        int phase1, phase2;
-        int pf = a_op(ns, wd->n_proton_f, j, a + 1, &phase1);
-        if (pf == 0) {continue;}
-        pf = a_op(ns, wd->n_proton_f - 1, pf, b + 1, &phase2);
-        if (pf == 0) {continue;}
-        p_list_f[(pf - 1) + n_sds_p_int*(a + b*ns)] = phase1*phase2*j;
-      }
-    }
-  }
-  printf("Done.\n");
+  sd_list **p2_list_i = (sd_list**) calloc(ns*ns, sizeof(sd_list*));
+  sd_list **n2_list_i = (sd_list**) calloc(ns*ns, sizeof(sd_list));
+  sd_list **p1_list_i = (sd_list**) calloc(ns, sizeof(sd_list*));
+  sd_list **n1_list_i = (sd_list**) calloc(ns, sizeof(sd_list*));
+  int* p1_list_f = (int*) calloc(ns*n_sds_p_int1, sizeof(int));
+  int* p2_list_f = (int*) calloc(ns*ns*n_sds_p_int2, sizeof(int));
+  int* n1_list_f = (int*) calloc(ns*n_sds_n_int1, sizeof(int));
+  int* n2_list_f = (int*) calloc(ns*ns*n_sds_n_int2, sizeof(int));
 
-  printf("Building initial state neutron jumps...\n");
-  
-  for (int c = 0; c < ns; c++) {
-    for (int d = 0; d < c; d++) {
-      n_list_i[c + d*ns] = create_sd_node(0,0,1,NULL);;
-      for (int j = 1; j <= wd->n_sds_n_i; j++) {
-        int phase1, phase2;
-        int pf = a_op(ns, wd->n_neutron_i, j, c + 1, &phase1);
-        if (pf == 0) {continue;}
-        pf = a_op(ns, wd->n_neutron_i - 1, pf, d + 1, &phase2);
-        if (pf == 0) {continue;}
-        sd_append(n_list_i[c + d*ns], j, pf, phase1*phase2);
+  if (wd->same_basis) {
+    printf("Building proton jumps...\n");
+    for (int j = 1; j <= wd->n_sds_p_i; j++) {
+      int j_min = j_min_from_p(ns, wd->n_proton_i, j);
+      for (int b = j_min - 1; b < ns; b++) {
+        int phase1;
+        int pn1 = a_op(ns, wd->n_proton_i, j, b + 1, &phase1, j_min);
+        if (pn1 == 0) {continue;}
+        p1_list_f[(pn1 - 1) + b*n_sds_p_int1] = j*phase1;
+        if (p1_list_i[b] == NULL) {
+          p1_list_i[b] = create_sd_node(j, pn1, phase1, NULL);
+        } else {
+          sd_append(p1_list_i[b], j, pn1, phase1);
+        }
+        for (int a = j_min - 1; a < b; a++) {
+          int phase2;
+          int pn2 = a_op(ns, wd->n_proton_i - 1, pn1, a + 1, &phase2, j_min);
+          if (pn2 == 0) {continue;}
+          if (p2_list_i[b + a*ns] == NULL) {
+            p2_list_i[b + a*ns] = create_sd_node(j, pn2, phase1*phase2, NULL);
+          } else {
+            sd_append(p2_list_i[b + a*ns], j, pn2, phase1*phase2);
+          }
+          if (p2_list_i[a + b*ns] == NULL) {
+            p2_list_i[a + b*ns] = create_sd_node(j, pn2, -phase1*phase2, NULL);
+          } else {
+            sd_append(p2_list_i[a + b*ns], j, pn2, -phase1*phase2);
+          }
+          p2_list_f[(pn2 - 1) + n_sds_p_int2*(b + a*ns)] = phase1*phase2*j;
+          p2_list_f[(pn2 - 1) + n_sds_p_int2*(a + b*ns)] = -phase1*phase2*j;
+        }
       }
     }
-  }
-  printf("Done.\n");
-  int *n_list_f = (int*) calloc(ns*(ns + 1)*n_sds_n_int, sizeof(int));
-  printf("Building final state neutron jumps...\n");
-  
-  for (int a = 0; a < ns; a++) {
-    for (int b = 0; b < a; b++) {
-      for (int j = 1; j <= wd->n_sds_n_f; j++) {
-        int phase1, phase2;
-        int pf = a_op(ns, wd->n_neutron_f, j, a + 1, &phase1);
-        if (pf == 0) {continue;}
-        pf = a_op(ns, wd->n_neutron_f - 1, j, b + 1, &phase2);
-        if (pf == 0) {continue;}
-        n_list_f[(pf - 1) + n_sds_n_int*(a + b*ns)] = phase1*phase2*j;
+    printf("Done.\n");
+    printf("Building neutron jumps %d...\n", wd->n_sds_n_i);
+    for (int j = 1; j <= wd->n_sds_n_i; j++) {
+      int j_min = j_min_from_p(ns, wd->n_neutron_i, j);
+      for (int b = j_min - 1; b < ns; b++) {
+        int phase1;
+        int pn1 = a_op(ns, wd->n_neutron_i, j, b + 1, &phase1, j_min);
+        if (pn1 == 0) {continue;}
+        n1_list_f[(pn1 - 1) + b*n_sds_n_int1] = j*phase1;
+        if (n1_list_i[b] == NULL) {
+          n1_list_i[b] = create_sd_node(j, pn1, phase1, NULL);
+        } else {
+          sd_append(n1_list_i[b], j, pn1, phase1);
+        }
+        for (int a = j_min - 1; a < b; a++) {
+          int phase2;
+          int pn2 = a_op(ns, wd->n_neutron_i - 1, pn1, a + 1, &phase2, j_min);
+          if (pn2 == 0) {continue;}
+          if (n2_list_i[b + a*ns] == NULL) {
+            n2_list_i[b + a*ns] = create_sd_node(j, pn2, phase1*phase2, NULL);
+          } else {
+            sd_append(n2_list_i[b + a*ns], j, pn2, phase1*phase2);
+          }
+          if (n2_list_i[a + b*ns] == NULL) {
+            n2_list_i[a + b*ns] = create_sd_node(j, pn2, -phase1*phase2, NULL);
+          } else {
+            sd_append(n2_list_i[a + b*ns], j, pn2, -phase1*phase2);
+          }
+          n2_list_f[(pn2 - 1) + n_sds_n_int2*(b + a*ns)] = phase1*phase2*j;
+          n2_list_f[(pn2 - 1) + n_sds_n_int2*(a + b*ns)] = -phase1*phase2*j;
+        }
       }
     }
-  }
-  printf("Done.\n");
+    printf("Done.\n");
+  } else {
 
-  for (int psi_i = 0; psi_i < wd->n_eig_i; psi_i++) {
+    printf("Building initial state proton jumps...\n");
+    for (int j = 1; j <= wd->n_sds_p_i; j++) {
+      for (int b = 0; b < ns; b++) {
+        int phase1;
+        int pn1 = a_op(ns, wd->n_proton_i, j, b + 1, &phase1, 1);
+        if (pn1 == 0) {continue;}
+        if (p1_list_i[b] == NULL) {
+          p1_list_i[b] = create_sd_node(j, pn1, phase1, NULL);
+        } else {
+          sd_append(p1_list_i[b], j, pn1, phase1);
+        }
+        for (int a = 0; a < b; a++) {
+          int phase2;
+          int pn2 = a_op(ns, wd->n_proton_i - 1, pn1, a + 1, &phase2, 1);
+          if (pn2 == 0) {continue;}
+          if (p2_list_i[b + a*ns] == NULL) {
+            p2_list_i[b + a*ns] = create_sd_node(j, pn2, phase1*phase2, NULL);
+          } else {
+            sd_append(p2_list_i[b + a*ns], j, pn2, phase1*phase2);
+          }
+          if (p2_list_i[a + b*ns] == NULL) {
+            p2_list_i[a + b*ns] = create_sd_node(j, pn2, -phase1*phase2, NULL);
+          } else {
+            sd_append(p2_list_i[a + b*ns], j, pn2, -phase1*phase2);
+          }
+        }
+      }
+    }
+    printf("Done.\n");
+    printf("Building final state proton jumps...\n");  
+    for (int j = 1; j <= wd->n_sds_p_f; j++) {
+      for (int b = 0; b < ns; b++) {
+        int phase1;
+        int pn1 = a_op(ns, wd->n_proton_f, j, b + 1, &phase1, 1);
+        if (pn1 == 0) {continue;}
+        p1_list_f[(pn1 - 1) + b*n_sds_p_int1] = j*phase1;
+        for (int a = 0; a < b; a++) {
+          int phase2;
+          int pn2 = a_op(ns, wd->n_proton_f - 1, pn1, a + 1, &phase2, 1);
+          if (pn2 == 0) {continue;}
+          p2_list_f[(pn2 - 1) + n_sds_p_int2*(b + a*ns)] = phase1*phase2*j;
+          p2_list_f[(pn2 - 1) + n_sds_p_int2*(a + b*ns)] = -phase1*phase2*j;
+        }
+      }
+    }
+    printf("Done.\n");
+    printf("Building initial state neutron jumps...\n");
+    for (int j = 1; j <= wd->n_sds_n_i; j++) {
+      for (int b = 0; b < ns; b++) {
+        int phase1;
+        int pn1 = a_op(ns, wd->n_neutron_i, j, b + 1, &phase1, 1);
+        if (pn1 == 0) {continue;}
+        if (n1_list_i[b] == NULL) {
+          n1_list_i[b] = create_sd_node(j, pn1, phase1, NULL);
+        } else {
+          sd_append(n1_list_i[b], j, pn1, phase1);
+        }
+        for (int a = 0; a < b; a++) {
+          int phase2;
+          int pn2 = a_op(ns, wd->n_neutron_i - 1, pn1, a + 1, &phase2, 1);
+          if (pn2 == 0) {continue;}
+          if (n2_list_i[b + a*ns] == NULL) {
+            n2_list_i[b + a*ns] = create_sd_node(j, pn2, phase1*phase2, NULL);
+          } else {
+            sd_append(n2_list_i[b + a*ns], j, pn2, phase1*phase2);
+          }
+          if (n2_list_i[a + b*ns] == NULL) {
+            n2_list_i[a + b*ns] = create_sd_node(j, pn2, -phase1*phase2, NULL);
+          } else {
+            sd_append(n2_list_i[a + b*ns], j, pn2, -phase1*phase2);
+          }
+        }
+      }
+    }
+    printf("Done.\n");
+    printf("Building final state neutron jumps...\n");
+    // Create 1 and 2 particle lists
+    for (int j = 1; j <= wd->n_sds_n_f; j++) {
+      for (int b = 0; b < ns; b++) {
+        int phase1;
+        int pn1 = a_op(ns, wd->n_neutron_f, j, b + 1, &phase1, 1);
+        if (pn1 == 0) {continue;}
+        n1_list_f[(pn1 - 1) + b*n_sds_n_int1] = j*phase1;
+        for (int a = 0; a < b; a++) {
+          int phase2;
+          int pn2 = a_op(ns, wd->n_neutron_f - 1, pn1, a + 1, &phase2, 1);
+          if (pn2 == 0) {continue;}
+          n2_list_f[(pn2 - 1) + n_sds_n_int2*(b + a*ns)] = phase1*phase2*j;
+          n2_list_f[(pn2 - 1) + n_sds_n_int2*(a + b*ns)] = -phase1*phase2*j;
+        }
+      }
+    }
+    printf("Done.\n");
+  }
+  FILE *out_file;
+  out_file = fopen("ne-mg_fermi_density", "w"); 
+  for (int psi_i = 0; psi_i < 1; psi_i++) {
     double ji = wd->j_nuc_i[psi_i];
     double ti = wd->t_nuc_i[psi_i];
     // Many-body states do not have mt = 0
     double mti = 0.5*(wd->n_proton_i - wd->n_neutron_i);
     // Loop over final many-body wave functions
-    for (int psi_f = 0; psi_f < wd->n_eig_f; psi_f++) {
+    for (int psi_f = 0; psi_f < 1; psi_f++) {
       double cg_j = 0.0;
       double cg_t = 0.0;
       double jf = wd->j_nuc_f[psi_f];
@@ -367,7 +516,7 @@ void two_body_density(int j_op, int t_op) {
       if (cg_t == 0.0) {continue;}
       cg_j *= pow(-1.0, j_op + ji + jf)*sqrt(2*j_op + 1)/sqrt(2*jf + 1);
       cg_t *= pow(-1.0, t_op + ti + tf)*sqrt(2*t_op + 1)/sqrt(2*tf + 1);
-      printf("Initial state: %d Final State: %d \n", psi_i + 1, psi_f + 1);
+      printf("Initial state: #%d J: %g T: %g Final State: #%d J: %g T: %g\n", psi_i + 1, ji, ti, psi_f + 1, jf, tf);
       double mat_test = 0.0;
       // Loop over orbital a
       for (int i_orb1 = 0; i_orb1 < wd->n_orbits; i_orb1++) {
@@ -394,79 +543,91 @@ void two_body_density(int j_op, int t_op) {
                 j_store[k] = 0.0;
               }
               // Loop over shells for orbit a
-              for (int a = 0; a < wd->n_shells; a++) {
+              for (int ia = 0; ia < 2*wd->n_shells; ia++) {
+                double mt1 = 0.5;
+                int a = ia;
+                if (a >= ns) {a -= ns; mt1 -= 1;}
                 if (wd->l_shell[a] != wd->l_orb[i_orb1]) {continue;}
                 if (wd->n_shell[a] != wd->n_orb[i_orb1]) {continue;}
                 if (wd->j_shell[a]/2.0 != j1) {continue;}
                 double mj1 = wd->jz_shell[a]/2.0;
-                double mt1 = wd->tz_shell[a]/2.0;
                  // Loop over shells for orbit b
-                for (int b = 0; b < wd->n_shells; b++) {
-                  if (a == b) {continue;}
+                for (int ib = 0; ib < 2*wd->n_shells; ib++) {
+                  if (ib == ia) {continue;}
+                  double mt2 = 0.5;
+                  int b = ib;
+                  if (b >= ns) {b -= ns; mt2 -= 1;}
                   if (wd->l_shell[b] != wd->l_orb[i_orb2]) {continue;}
                   if (wd->n_shell[b] != wd->n_orb[i_orb2]) {continue;}
                   if (wd->j_shell[b]/2.0 != j2) {continue;}
                   double mj2 = wd->jz_shell[b]/2.0;
-                  double mt2 = wd->tz_shell[b]/2.0;
-                  int swp1 = 1;
-                  if (b > a) {
-                    int f = a;
-                    a = b;
-                    b = f;
-                    swp1 = -1;
-                  }
-                  // Loop over coupled angular momentum j12
-                  for (int j12 = (int) abs(j1 - j2); j12 <= (int) (j1 + j2); j12++) {
-                    if ((mj1 + mj2 > j12) || (mj1 + mj2 < -j12)) {continue;}
-                    // CG factor for coupling j1, j2 to j12
-                    double cg_j12 = clebsch_gordan(j1, j2, j12, mj1, mj2, mj1 + mj2);
-                    if (cg_j12 == 0.0) {continue;}
-                    for (int t12 = 0; t12 <= 1; t12++) {
-                      if ((mt1 + mt2 > t12) || (mt1 + mt2 < -t12)) {continue;}
-                      double cg_t12 = clebsch_gordan(0.5, 0.5, t12, mt1, mt2, mt1 + mt2);
-                      // Loop over shells for orbit c
-                      for (int c = 0; c < wd->n_shells; c++) {
-                        if (wd->l_shell[c] != wd->l_orb[i_orb3]) {continue;}
-                        if (wd->n_shell[c] != wd->n_orb[i_orb3]) {continue;}
-                        if (wd->j_shell[c]/2.0 != j4) {continue;}
-                        double mj4 = wd->jz_shell[c]/2.0;
-                        double mt4 = wd->tz_shell[c]/2.0;
-                        // Loop over shells for orbit d
-                        for (int d = 0; d < wd->n_shells; d++) {
-                          if (c == d) {continue;}
-                          if (wd->l_shell[d] != wd->l_orb[i_orb4]) {continue;}
-                          if (wd->n_shell[d] != wd->n_orb[i_orb4]) {continue;}
-                          if (wd->j_shell[d]/2.0 != j3) {continue;}
-                          double mj3 = wd->jz_shell[d]/2.0;
-                          double mt3 = wd->tz_shell[d]/2.0;
-                          int swp2 = 1;
-                          if (d > c) {
-                            int f = c;
-                            c = d;
-                            d = f;
-                            swp2 = -1;
-                          }
-                          // Loop over coupled angular momentum j34
-                          for (int j34 = abs(j3 - j4); j34 <= j3 + j4; j34++) {
+                  for (int ic = 0; ic < 2*wd->n_shells; ic++) {
+                    double mt4 = 0.5;
+                    int c = ic;
+                    if (c >= ns) {c -= ns; mt4 -= 1;}
+                    if (wd->l_shell[c] != wd->l_orb[i_orb3]) {continue;}
+                    if (wd->n_shell[c] != wd->n_orb[i_orb3]) {continue;}
+                    if (wd->j_shell[c]/2.0 != j4) {continue;}
+                    double mj4 = wd->jz_shell[c]/2.0;
+                    // Loop over shells for orbit d
+                    for (int id = 0; id < 2*wd->n_shells; id++) {
+                      if (ic == id) {continue;}
+                      int d = id;
+                      double mt3 = 0.5;
+                      if (d >= ns) {d -= ns; mt3 -= 1;}
+                      if (wd->l_shell[d] != wd->l_orb[i_orb4]) {continue;}
+                      if (wd->n_shell[d] != wd->n_orb[i_orb4]) {continue;}
+                      if (wd->j_shell[d]/2.0 != j3) {continue;}
+                      double mj3 = wd->jz_shell[d]/2.0;
+                      if (mj1 + mj2 != mj3 + mj4) {continue;}
+                      if (mt1 + mt2 - mt3 - mt4 != mt_op) {continue;}
+                      double d1 = 0.0;
+                      if ((mt3 == 0.5) && (mt4 == 0.5)) { // 
+                        sd_list* node1 = p2_list_i[c + d*ns];
+                        if ((mt1 == 0.5) && (mt2 == 0.5)) { // 2 proton creation operators + 2 proton annihilation operators
+                          d1 = trace_a4_nodes(node1, a, b, n_sds_p_int2, wd, p2_list_f, wd->p_hash_i, wd->p_hash_f, psi_i, psi_f);
+                        } else if ((mt1 == -0.5) && (mt2 == -0.5)) { // 2 neutron creation operators and two proton ann. operators
+                          d1 = trace_a22_nodes(node1, a, b, n_sds_n_int2, wd, n2_list_f, wd->p_hash_i, wd->p_hash_f, psi_i, psi_f);
+                        }  
+                      } else if ((mt3 == -0.5) && (mt4 == -0.5)) {
+                        sd_list* node1 = n2_list_i[c + d*ns];
+                        if ((mt1 == -0.5) && (mt2 == -0.5)) { //2 n cr. and 2 n ann. operators
+                          d1 = trace_a4_nodes(node1, a, b, n_sds_n_int2, wd, n2_list_f, wd->n_hash_i, wd->n_hash_f, psi_i, psi_f);
+                        } else if ((mt1 == 0.5) && (mt2 == 0.5)) {// 2 p cr. and 2 n ann. operators
+                          d1 = trace_a22_nodes(node1, a, b, n_sds_p_int2, wd, p2_list_f, wd->n_hash_i, wd->n_hash_f, psi_i, psi_f);
+                        }
+                      } else if ((mt1 == 0.5) && (mt2 == -0.5) && (mt3 == 0.5) && (mt4 == -0.5)) {
+                          d1 = trace_a20_nodes(p1_list_i, n1_list_i, p1_list_f, n1_list_f, a, d, b, c, n_sds_p_int1, n_sds_n_int1, wd, psi_i, psi_f);
+                      } else if ((mt1 == -0.5) && (mt2 == 0.5) && (mt3 == 0.5) && (mt4 == -0.5)) {
+                          d1 = trace_a20_nodes(p1_list_i, n1_list_i, p1_list_f, n1_list_f, b, d, a, c, n_sds_p_int1, n_sds_n_int1, wd, psi_i, psi_f);
+                      } else if ((mt1 == 0.5) && (mt2 == -0.5) && (mt3 == -0.5) && (mt4 == 0.5)) {
+                          d1 = trace_a20_nodes(p1_list_i, n1_list_i, p1_list_f, n1_list_f, a, c, b, d, n_sds_p_int1, n_sds_n_int1, wd, psi_i, psi_f);
+                      } else if ((mt1 == -0.5) && (mt2 == 0.5) && (mt3 == -0.5) && (mt4 == 0.5)) {
+                          d1 = trace_a20_nodes(p1_list_i, n1_list_i, p1_list_f, n1_list_f, b, c, a, d, n_sds_p_int1, n_sds_n_int1, wd, psi_i, psi_f);
+                      }
+                      for (int j12 = round(abs(j1 - j2)); j12 <= round(j1 + j2); j12++) {
+                        if ((mj1 + mj2 > j12) || (mj1 + mj2 < -j12)) {continue;}
+                        double cg_j12 = clebsch_gordan(j1, j2, j12, mj1, mj2, mj1 + mj2);
+                        if (cg_j12 == 0.0) {continue;}
+                        for (int t12 = 0; t12 <= 1; t12++) {
+                          if ((mt1 + mt2 > t12) || (mt1 + mt2 < -t12)) {continue;}
+                          double cg_t12 = clebsch_gordan(0.5, 0.5, t12, mt1, mt2, mt1 + mt2);
+                          for (int j34 = round(fabs(j3 - j4)); j34 <= round(j3 + j4); j34++) {
                             if ((mj3 + mj4 > j34) || (mj3 + mj4 < -j34)){continue;}
                             double cg_j34 = clebsch_gordan(j3, j4, j34, -mj3, -mj4, -mj3 - mj4);
                             if (cg_j34 == 0.0) {continue;}
-                            if (mj1 + mj2 -mj3 - mj4 != 0.0) {continue;}
                             double cg_jop = clebsch_gordan(j12, j34, j_op, mj1 + mj2, -mj3 - mj4, 0);
                             if (cg_jop == 0.0) {continue;}
                             for (int t34 = 0; t34 <= 1; t34++) {
-                              if ((mt3 + mt4 > t34) || (mt3 + mt4 < -t34)){continue;}
+                              if ((mt3 + mt4 > t34) || (mt3 + mt4 < -t34)) {continue;}
                               double cg_t34 = clebsch_gordan(0.5, 0.5, t34, -mt3, -mt4, -mt3 - mt4);
                               if (cg_t34 == 0.0) {continue;}
                               double cg_top = clebsch_gordan(t12, t34, t_op, mt1 + mt2, -mt3 - mt4, mt_op);
                               if (cg_top == 0.0) {continue;}
                               double d2 = pow(-1.0, j3 + j4 + mj3 + mj4)*cg_j12*cg_j34*cg_jop;
                               d2 *= pow(-1.0, 1 + mt3 + mt4)*cg_t12*cg_t34*cg_top;
-                              double d1 = 0.0;
-
-                              // Loop over initial wave function basis
-                              //printf("About to write to jstore: %d, %d\n", j_dim, t12 + 2*(t34 + 2*(j12*h_dim + j34)));
-                              j_store[t12 + 2*(t34 + 2*((j12 - j_min_12)*j_dim_34 + (j34 - j_min_34)))] += d1*d2/(cg_t*cg_j);
+                              if (d2 == 0.0) {continue;}
+                              j_store[t12 + 2*(t34 + 2*((j12 - j_min_12)*j_dim_34 + (j34 - j_min_34)))] += d1*d2/(cg_j*cg_t);
                             }
                           }
                         }
@@ -475,18 +636,21 @@ void two_body_density(int j_op, int t_op) {
                   }
                 }
               }
+           
               for (int t12 = 0; t12 <= 1; t12++) {
                 for (int t34 = 0; t34 <= 1; t34++) {
                   for (int ij12 = 0; ij12 < j_dim_12; ij12++) {
                     for (int ij34 = 0; ij34 < j_dim_34; ij34++) {
                       //if (fabs(j_store[t12 + 2*(t34 + 2*(j12*h_dim + j34))]) < pow(10, -6)) {j_store[t12 + 2*(t34 + 2*(j12*h_dim + j34))] = 0.0; continue;}
-                      if (fabs(j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]) > pow(10, -8)) {printf("%d %g %d %g %d %d %d %g %d %g %d %d %g \n", wd->n_orb[i_orb1], wd->j_orb[i_orb1], wd->n_orb[i_orb2], wd->j_orb[i_orb2], ij12 + j_min_12, t12, wd->n_orb[i_orb3], wd->j_orb[i_orb3], wd->n_orb[i_orb4], wd->j_orb[i_orb4], ij34 + j_min_34, t34, j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]);}
+                      if (fabs(j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]) > pow(10, -8)) {fprintf(out_file, "%d,%g,%d,%g,%d,%d,%d,%g,%d,%g,%d,%d,%g\n", 2*wd->n_orb[i_orb1], 2*wd->j_orb[i_orb1], 2*wd->n_orb[i_orb2], 2*wd->j_orb[i_orb2], 2*(ij12 + j_min_12), 2*t12, 2*wd->n_orb[i_orb4], 2*wd->j_orb[i_orb4], 2*wd->n_orb[i_orb3], 2*wd->j_orb[i_orb3], 2*(ij34 + j_min_34), 2*t34, j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]);}
+                      double d_mat = 0.0;
                       if ((i_orb1 == i_orb3) && (i_orb2 == i_orb4)) {
-                        mat_test += pow(-1.0, j3 + j4 + j_min_12 + ij12 + t12)*j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]*sqrt(2*(j_min_12 + ij12) + 1)*sqrt(2*t12 + 1);
+                        d_mat += pow(-1.0, j3 + j4 + j_min_12 + ij12 + t12)*j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]*sqrt(2*(j_min_12 + ij12) + 1)*sqrt(2*t12 + 1);
                       }
                       if ((i_orb1 == i_orb4) && (i_orb2 == i_orb3)) {
-                        mat_test += j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]*sqrt(2*(j_min_12 + ij12) + 1)*sqrt(2*t12 + 1);
+                        d_mat += j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]*sqrt(2*(j_min_12 + ij12) + 1)*sqrt(2*t12 + 1);
                       }
+                      mat_test += d_mat;
                     }
                   }
                 }
@@ -495,12 +659,140 @@ void two_body_density(int j_op, int t_op) {
           }
         }
       }
-      printf("%g\n", 0.5*mat_test);
+      printf("%g\n", -0.5*mat_test*0.5/(sqrt(2*tf + 1)*sqrt(2*jf + 1)));
     }
   } 
   free(j_store); 
+  fclose(out_file);
   return;
 }
+
+double trace_a4_nodes(sd_list* node1, int a, int b, int n_sds_int2, wfnData* wd, int* list_f, wf_list** hash_i, wf_list** hash_f, int psi_i, int psi_f) {
+  double total = 0.0;
+  int ns = wd->n_shells;
+  while (node1 != NULL) {
+    unsigned int ppn = node1->pn;
+    unsigned int ppi = node1->pi;
+    int phase1 = node1->phase;
+    int ppf = list_f[(ppn - 1) + n_sds_int2*(a + ns*b)];
+    if (ppf == 0) {node1 = node1->next; continue;}
+    int phase2 = 1;
+    node1 = node1->next;
+    if (ppf < 0) {
+      ppf *= -1;
+      phase2 *= -1;
+    }
+    wf_list* node2 = hash_i[ppi - 1];
+    while (node2 != NULL) {
+      int index_i = node2->index;
+      wf_list* node3 = hash_f[ppf - 1];
+      while (node3 != NULL) {
+        if (node2->p == node3->p) {
+          int index_f = node3->index;
+          total += wd->bc_i[index_i].wave[psi_i]*wd->bc_f[index_f].wave[psi_f]*phase1*phase2;
+          break;
+        }
+        node3 = node3->next;
+      }
+      node2 = node2->next;
+    }
+  }
+  return total;
+}
+
+double trace_a22_nodes(sd_list* node1, int a, int b, int n_sds_int2, wfnData* wd, int* list_f, wf_list** hash_i, wf_list** hash_f, int psi_i, int psi_f) {
+  double total = 0.0;
+  int ns = wd->n_shells;
+  // Loop over final states resulting from 2x a_op
+  while (node1 != NULL) {
+    int ppf = node1->pn; // Get final state p_f
+    int ppi = node1->pi; // Get initial state p_i
+    int phase1 = node1->phase;
+    // Get list of n_f associated to p_f
+    wf_list *node2 = hash_f[ppf - 1]; //hash corresponds to a_op operators
+    int index_i;
+    int index_f;
+    // Loop over n_f  
+    while (node2 != NULL) {
+      index_f = node2->index;
+      int pnf = node2->p;
+      // Get list of n_i associated to n_f
+      wf_list *node3 = hash_i[ppi - 1]; // hash corresponds to a_op operators
+      while (node3 != NULL) {
+        int pni = node3->p;
+        int phase2 = 1;
+        if (list_f[(pni - 1) + n_sds_int2*(a + b*ns)] == pnf) { // need n_sds_int2/ list of a_dag_op
+          index_i = node3->index;
+          total += wd->bc_i[index_i].wave[psi_i]*wd->bc_f[index_f].wave[psi_f]*phase1*phase2;
+        } else if (list_f[(pni - 1) + n_sds_int2*(a + b*ns)] == -pnf) {
+          phase2 = -1;
+          index_i = node3->index;
+          total += wd->bc_i[index_i].wave[psi_i]*wd->bc_f[index_f].wave[psi_f]*phase1*phase2;
+        }
+        node3 = node3->next;
+      }
+      node2 = node2->next;
+    }
+    node1 = node1->next;
+  }  
+  return total;
+}
+
+double trace_a20_nodes(sd_list** p1_list_i, sd_list** n1_list_i, int* p1_list_f, int* n1_list_f, int a, int b, int c, int d, int n_sds_p_int1, int n_sds_n_int1, wfnData* wd, int psi_i, int psi_f) {
+  double total = 0.0;
+  int ns = wd->n_shells;
+  // Loop over final states resulting from 2x a_op
+  sd_list* node_pi = p1_list_i[b];
+  while (node_pi != NULL) {
+    int ppi = node_pi->pi; 
+    int ppn = node_pi->pn; // Get pn = a| p_i>
+    int phase1 = node_pi->phase;
+    int phase2 = 1;
+    int ppf = p1_list_f[(ppn - 1) + n_sds_p_int1*a];
+    if (ppf == 0) {node_pi = node_pi->next; continue;}
+    if (ppf < 0) {
+      ppf *= -1;
+      phase2 = -1;
+    }
+    sd_list* node_ni = n1_list_i[d];
+    while (node_ni != NULL) {
+      int pni = node_ni->pi;
+      int pnn = node_ni->pn; // Get pn = a| p_i>
+      int phase3 = node_ni->phase;
+      int phase4 = 1;
+      int pnf = n1_list_f[(pnn - 1) + n_sds_n_int1*c];
+      if (pnf == 0) {node_ni = node_ni->next; continue;}
+      if (pnf < 0) {
+        pnf *= -1;
+        phase4 = -1;
+      }
+     // if (wd->m_list_pi[ppi] + wd->m_list_ni[pni] != 0) {node_ni = node_ni->next; continue;} // Loop over conjugate sectors
+     // if (wd->m_list_pf[ppf] + wd->m_list_nf[pnf] != 0) {node_ni = node_ni->next; continue;}
+      
+      wf_list *node_i = wd->p_hash_f[ppi - 1]; 
+      wf_list *node_f = wd->p_hash_i[ppf - 1];
+      unsigned int index_i;
+      unsigned int index_f;
+      int found = 0;
+      while (node_i != NULL) {
+        if (node_i->p == pni) {index_i = node_i->index; found = 1; break;}
+        node_i = node_i->next;
+      }
+      if (!found) {node_ni = node_ni->next; continue;}
+      found = 0;
+      while (node_f != NULL) {
+        if (node_f->p == pnf) {index_f = node_f->index; found = 1; break;}
+        node_f = node_f->next;
+      }
+      if (!found) {node_ni = node_ni->next; continue;}
+      total += wd->bc_i[index_i].wave[psi_i]*wd->bc_f[index_f].wave[psi_f]*phase1*phase2*phase3*phase4;
+      node_ni = node_ni->next;
+    }
+    node_pi = node_pi->next;
+  }  
+  return total;
+}
+
 
 wfnData* read_wfn_data() {
   wfnData *wd = malloc(sizeof(*wd));
@@ -562,7 +854,6 @@ wfnData* read_wfn_data() {
 
   wd->bc_i = malloc(sizeof(BasisCoeff)*wd->n_states_i);
   printf("Reading in initial state wavefunction coefficients\n");
-  double norm = 0.0;
   int* max_state = (int*) malloc(sizeof(int)*wd->n_proton_i);
   for (int i = 0; i < wd->n_proton_i; i++) {
     max_state[i] = wd->n_shells - (wd->n_proton_i - i - 1);
@@ -613,9 +904,7 @@ wfnData* read_wfn_data() {
     for (int j = 0; j < wd->n_eig_i; j++) {
       fscanf(in_file, "%lf\n", &wd->bc_i[i].wave[j]);
     }
-    norm += pow(wd->bc_i[i].wave[0], 2.0);
   }
-  printf("Norm: %g\n", norm);
   free(p_orbitals);
   free(n_orbitals);
   fclose(in_file);
@@ -636,7 +925,6 @@ wfnData* read_wfn_data() {
     wd->e_nuc_f = wd->e_nuc_i;
     wd->j_nuc_f = wd->j_nuc_i;
     wd->t_nuc_f = wd->t_nuc_i;
-//    wd->bc_f = malloc(sizeof(BasisCoeff)*wd->n_states_f);
     wd->bc_f = wd->bc_i;
     wd->p_hash_f = wd->p_hash_i;
     wd->n_hash_f = wd->n_hash_i;
@@ -658,7 +946,7 @@ wfnData* read_wfn_data() {
     fgets(buffer, 100, in_file);
     fscanf(in_file, "%d", &wd->n_states_f);
     printf("Final state contains %d protons and %d neutrons\n", wd->n_proton_f, wd->n_neutron_f);
-    if (wd->n_shells != n_shells_test) {printf("Error: number of shells does not agree between initial and final state model spaces\n"); exit(0);}
+    if (wd->n_shells != n_shells_test/2) {printf("Error: number of shells does not agree between initial and final state model spaces\n"); exit(0);}
     printf("The model space has %d shells for a total basis size of %d\n", wd->n_shells, wd->n_states_f);
     if (wd->n_proton_f + wd->n_neutron_f != wd->n_proton_i + wd->n_neutron_i) {printf("Error: total number of nucleons is not constant\n"); exit(0);}
     fgets(buffer, 100, in_file);
@@ -684,13 +972,8 @@ wfnData* read_wfn_data() {
       }
       fgets(buffer, 100, in_file);
     }
-    for (int i = 0; i < wd->n_shells; i++) {
-      int n_test, l_test, j_test, jz_test, tz_test;
-      fscanf(in_file, "%*d %d %d %d %d %d\n", &n_test, &l_test, &j_test, &jz_test, &tz_test);
-      if ((n_test != wd->n_shell[i]) || (l_test != wd->l_shell[i]) || (j_test != wd->j_shell[i]) || (jz_test != wd->jz_shell[i]) || (tz_test != wd->tz_shell[i])) {
-        printf("Error shell structure is not identical between initial and final state model spaces\n");
-        exit(0);
-      }
+    for (int i = 0; i < 2*wd->n_shells; i++) {
+      fscanf(in_file, "%*d %*d %*d %*d %*d %*d\n");
     }
     int* max_state = (int*) malloc(sizeof(int)*wd->n_proton_f);
     for (int i = 0; i < wd->n_proton_f; i++) {
@@ -703,35 +986,53 @@ wfnData* read_wfn_data() {
       max_state[i] = wd->n_shells - (wd->n_neutron_f - i - 1);
     }
     wd->n_sds_n_f = p_step(wd->n_shells, wd->n_neutron_f, max_state);
-    printf("Num initial neutron SDs: %d\n", wd->n_sds_n_f);
+    printf("Num final neutron SDs: %d\n", wd->n_sds_n_f);
     free(max_state);
-    norm = 0.0;
+
+    wd->p_hash_f = (wf_list**) calloc(wd->n_sds_p_f, sizeof(wf_list*));
+    wd->n_hash_f = (wf_list**) calloc(wd->n_sds_n_f, sizeof(wf_list*));
+    p_orbitals = (int*) malloc(sizeof(int)*wd->n_proton_f);
+    n_orbitals = (int*) malloc(sizeof(int)*wd->n_neutron_f);
+    wd->bc_f = malloc(sizeof(BasisCoeff)*wd->n_states_f);
     for (int i = 0; i < wd->n_states_f; i++) {
-      unsigned int bn = 0;
-      unsigned int bp = 0;
+      int in = 0;
+      int ip = 0;
       for (int j = 0; j < wd->n_data; j++) {
         int i_orb;
         fscanf(in_file, "%d", &i_orb);
         if (i_orb <= wd->n_shells) {
-          bp += pow(2, wd->n_shells - i_orb);
+          p_orbitals[ip] = i_orb;
+          ip++;
         } else {
-          bn += pow(2, 2*wd->n_shells - i_orb);
+          n_orbitals[in] = i_orb - wd->n_shells;
+          in++;
         }
       }
-      unsigned int bh = bp ^ bn;
-      if (wd->p_hash_f[bh] == NULL) {
-        wd->p_hash_f[bh] = create_wf_node(bp, i, NULL);
+      unsigned int pp = p_step(wd->n_shells, wd->n_proton_f, p_orbitals);
+      unsigned int pn;
+      if (in == 0) {pn = 1;
       } else {
-        wf_append(wd->p_hash_f[bh], bn, i);
+        pn = p_step(wd->n_shells, wd->n_neutron_f, n_orbitals);
       }
+      if (wd->p_hash_f[pp - 1] == NULL) {
+        wd->p_hash_f[pp - 1] = create_wf_node(pn, i, NULL);
+      } else {
+        wf_append(wd->p_hash_f[pp - 1], pn, i);
+      }
+      if (wd->n_hash_f[pn - 1] == NULL) {
+        wd->n_hash_f[pn - 1] = create_wf_node(pp, i, NULL);
+      } else {
+        wf_append(wd->n_hash_f[pn - 1], pp, i);
+      }
+
       wd->bc_f[i].wave = (double*) malloc(sizeof(double)*wd->n_eig_f);
       fgets(buffer, 100, in_file);
       for (int j = 0; j < wd->n_eig_f; j++) {
         fscanf(in_file, "%lf\n", &wd->bc_f[i].wave[j]);
       }
-      norm += pow(wd->bc_f[i].wave[0], 2.0);
     }
-    printf("Final state norm: %g\n", norm);
+    free(p_orbitals);
+    free(n_orbitals);
 
     fclose(in_file);
   }
@@ -749,7 +1050,6 @@ wfnData* read_wfn_data() {
     fscanf(in_file, "%lf %lf %lf %*d", &n_orb_f, &l_orb_f, &wd->j_orb[i]);
     wd->n_orb[i] = (int) n_orb_f;
     wd->l_orb[i] = (int) l_orb_f;
-    printf("%d, %d, %g\n", wd->n_orb[i], wd->l_orb[i], wd->j_orb[i]);
   }
   fclose(in_file);
   return wd;
@@ -771,14 +1071,16 @@ sd_list* create_sd_node(int pi, int pn, int phase, sd_list* next) {
 }
 
 sd_list* sd_append(sd_list* head, int pi, int pn, int phase) {
-  sd_list* current = head;
-  while (current->next != NULL) {
-    current = current->next;
+  if (head->next == NULL) {
+    sd_list* new_node = create_sd_node(pi, pn, phase, NULL);
+    head->next = new_node;
+  } else {
+    sd_list* next = head->next;
+    sd_list* new_node = create_sd_node(pi, pn, phase, next);
+    head->next = new_node;
   }
 
-  sd_list* new_node = create_sd_node(pi, pn, phase, NULL);
-  current->next = new_node;
-
+  
   return head;
 }
 
@@ -796,13 +1098,14 @@ wf_list* create_wf_node(unsigned int p, unsigned int index, wf_list* next) {
 }
 
 wf_list* wf_append(wf_list* head, unsigned int p, unsigned int index) {
-  wf_list* current = head;
-  while (current->next != NULL) {
-    current = current->next;
+  if (head->next == NULL) {
+    wf_list* new_node = create_wf_node(p, index, NULL);
+    head->next = new_node;
+  } else {
+    wf_list* next = head->next;
+    wf_list* new_node = create_wf_node(p, index, next);
+    head->next = new_node;
   }
-
-  wf_list* new_node = create_wf_node(p, index, NULL);
-  current->next = new_node;
 
   return head;
 }

@@ -7,7 +7,7 @@ void orbitals_from_p(unsigned int p, int n_s, int n_p, int* orbitals);
 void generate_single_particle_states();
 unsigned int bin_from_p(int n_s, int n_p, unsigned int p);
 int m_from_p(unsigned int p, int n_s, int n_p, int* m_shell);
-unsigned int a_op(int n_s, int n_p, unsigned int p, int n_op, int* phase);
+unsigned int a_op(int n_s, int n_p, unsigned int p, int n_op, int* phase, int j_min);
 unsigned int a_dag_op(int n_s, int n_p, unsigned int p, int n_op, int* phase);
 unsigned int a_dag_a_op(int n_s, int n_p, unsigned int p, int n_a, int n_b, int* phase);
 unsigned int a4_op(int n_s, int n_p, unsigned int p, int n_a, int n_b, int n_c, int n_d, int* phase);
@@ -23,4 +23,5 @@ unsigned int a2_op_b(int n_s, unsigned int b, int n_a, int n_b, int* phase);
 int bit_count(unsigned int b);
 int i_compare(const void * a, const void * b); 
 unsigned int a_op_b(int n_s, unsigned int b, int n_a, int* phase);
+int j_min_from_p(int n_s, int n_p, unsigned int p);
 #endif

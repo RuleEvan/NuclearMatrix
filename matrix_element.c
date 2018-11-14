@@ -305,12 +305,12 @@ double compute_matrix_element_M_GT() {
         if ((n1 == n1p) && (l1 == l1p) && (n2 == n2p) && (l2 == l2p)) {anti_symm = 1.0;}
         if ((n1 == n2p) && (l1 == l2p) && (n2 == n1p) && (l2 == l1p)) {anti_symm += pow(-1.0, t12 + l1p + l2p + lambda + s + 1);}
         m1 *= anti_symm;
-        if ((n1 == n2) && (j1 == j2) && (l1 == l2)) {m1 *= 1/sqrt(2);}
-        if ((n1p == n2p) && (j1p == j2p) && (l1p == l2p)) {m1 *= 1/sqrt(2);}
+    //    if ((n1 == n2) && (j1 == j2) && (l1 == l2)) {m1 *= 1/sqrt(2);}
+    //    if ((n1p == n2p) && (j1p == j2p) && (l1p == l2p)) {m1 *= 1/sqrt(2);}
         m4 += m1;
       }
     }
-    mat += m4*density;
+    mat += 0.5*m4*density;
   }
   fclose(in_file);     
                         
@@ -344,17 +344,21 @@ double compute_matrix_element_M_F() {
     double j12p = ij12p/2.0;
     double t12p = it12p/2.0;
     double m4 = 0.0;
+    if (t12 != 1 || t12p != 1) {continue;}
+    if (j12 != j12p) {continue;}
     if ((in1 == in1p) && (j1 == j1p) && (in2 == in2p) && (j2 == j2p)) {
       m4 = 1.0;
     }
+   
     if ((in1 == in2p) && (j1 == j2p) && (in2 == in1p) && (j2 == j1p)) {
       m4 += pow(-1.0, j1 + j2 + j12 + t12);
     }
     if (m4 == 0) {continue;}
     m4 *= sqrt(2.0*j12p + 1.0);
-    if ((in1 == in2) && (j1 == j2)) {m4 *= 1.0/sqrt(2.0);}
-    if ((in1p == in2p) && (j1p == j2p)) {m4 *= 1.0/sqrt(2.0);}
-    mat += m4*density*sqrt(5.0);
+    
+//    if ((in1 == in2) && (j1 == j2)) {m4 *= 1.0/sqrt(2.0);}
+//    if ((in1p == in2p) && (j1p == j2p)) {m4 *= 1.0/sqrt(2.0);}
+    mat += m4*density*sqrt(5.0)/2.0;
   }
   fclose(in_file);
                         

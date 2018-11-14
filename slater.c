@@ -138,15 +138,46 @@ unsigned int bin_phase_from_p(int n_s, int n_p, unsigned int p, int n_op, int* p
   return bin;
 }
 
-unsigned int a_op(int n_s, int n_p, unsigned int p, int n_op, int *phase) {
+int j_min_from_p(int n_s, int n_p, unsigned int p) {
+  unsigned int q = n_choose_k(n_s, n_p) - p;
+  
+  for (int j = 1; j <= n_s; j++) {
+    if ((q >= n_choose_k(n_s - j, n_p)) && (q < n_choose_k(n_s - (j - 1), n_p))) {
+      return j;
+    }
+  }
+
+  return 0;
+}
+
+
+unsigned int a_op(int n_s, int n_p, unsigned int p, int n_op, int *phase, int j_min) {
+  if (n_p == 0) {return 0;}
   // Acts an annihilation operator on the orbital in position n_op
   *phase = 1;
-  unsigned int bin = bin_phase_from_p(n_s, n_p, p, n_op, phase);
-  unsigned int check = pow(2, n_s - n_op);
-  if (!(bin & check)) {return 0;}
-  bin -= check;
-  unsigned int pp = p_from_binary(n_s, n_p - 1, bin);
-  return pp;
+  unsigned int q = n_choose_k(n_s, n_p) - p;
+  int k = 0;
+  int kp = 0;
+  unsigned int pf = n_choose_k(n_s, n_p - 1);
+  for (int j = j_min; j <= n_s; j++) {
+    if (k == n_p) {
+      if (j <= n_op) {return 0;} else {break;}
+    }
+    if ((q >= n_choose_k(n_s - j, n_p - k)) && (q < n_choose_k(n_s - (j - 1), n_p - k))) {
+      if (j != n_op) { //Found orbital to keep
+        pf -= n_choose_k(n_s - j, n_p - kp - 1);
+        kp++;
+      }
+      if (j < n_op) {
+        *phase *= -1;
+      }
+      q -= n_choose_k(n_s - j, n_p  - k);
+      k++;
+    } else if (j == n_op) { // Target state is empty
+      return 0;
+    }
+  }
+  return pf;
 }
 
 
