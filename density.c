@@ -329,7 +329,6 @@ void two_body_density(int j_op, int t_op) {
   int* p2_list_f = (int*) calloc(ns*ns*n_sds_p_int2, sizeof(int));
   int* n1_list_f = (int*) calloc(ns*n_sds_n_int1, sizeof(int));
   int* n2_list_f = (int*) calloc(ns*ns*n_sds_n_int2, sizeof(int));
-
   if (wd->same_basis) {
     printf("Building proton jumps...\n");
     for (int j = 1; j <= wd->n_sds_p_i; j++) {
@@ -498,13 +497,13 @@ void two_body_density(int j_op, int t_op) {
   }
   FILE *out_file;
   out_file = fopen("ne-mg_fermi_density", "w"); 
-  for (int psi_i = 75; psi_i < 76; psi_i++) {
+  for (int psi_i = 1; psi_i < 2; psi_i++) {
     double ji = wd->j_nuc_i[psi_i];
     double ti = wd->t_nuc_i[psi_i];
     // Many-body states do not have mt = 0
     double mti = 0.5*(wd->n_proton_i - wd->n_neutron_i);
     // Loop over final many-body wave functions
-    for (int psi_f = 0; psi_f < 1; psi_f++) {
+    for (int psi_f = 4; psi_f < 5; psi_f++) {
       double cg_j = 0.0;
       double cg_t = 0.0;
       double jf = wd->j_nuc_f[psi_f];
@@ -600,13 +599,13 @@ void two_body_density(int j_op, int t_op) {
                           d1 = trace_a22_nodes(node1, a, b, n_sds_p_int2, wd, p2_list_f, wd->n_hash_i, wd->n_hash_f, psi_i, psi_f);
                         }
                       } else if ((mt1 == 0.5) && (mt2 == -0.5) && (mt3 == 0.5) && (mt4 == -0.5)) {
-                          d1 = trace_a20_nodes(p1_list_i, n1_list_i, p1_list_f, n1_list_f, a, d, b, c, n_sds_p_int1, n_sds_n_int1, wd, psi_i, psi_f);
+                          d1 = -trace_a20_nodes(p1_list_i, n1_list_i, p1_list_f, n1_list_f, a, d, b, c, n_sds_p_int1, n_sds_n_int1, wd, psi_i, psi_f);
                       } else if ((mt1 == -0.5) && (mt2 == 0.5) && (mt3 == 0.5) && (mt4 == -0.5)) {
                           d1 = trace_a20_nodes(p1_list_i, n1_list_i, p1_list_f, n1_list_f, b, d, a, c, n_sds_p_int1, n_sds_n_int1, wd, psi_i, psi_f);
                       } else if ((mt1 == 0.5) && (mt2 == -0.5) && (mt3 == -0.5) && (mt4 == 0.5)) {
                           d1 = trace_a20_nodes(p1_list_i, n1_list_i, p1_list_f, n1_list_f, a, c, b, d, n_sds_p_int1, n_sds_n_int1, wd, psi_i, psi_f);
                       } else if ((mt1 == -0.5) && (mt2 == 0.5) && (mt3 == -0.5) && (mt4 == 0.5)) {
-                          d1 = trace_a20_nodes(p1_list_i, n1_list_i, p1_list_f, n1_list_f, b, c, a, d, n_sds_p_int1, n_sds_n_int1, wd, psi_i, psi_f);
+                          d1 = -trace_a20_nodes(p1_list_i, n1_list_i, p1_list_f, n1_list_f, b, c, a, d, n_sds_p_int1, n_sds_n_int1, wd, psi_i, psi_f);
                       }
                       for (int j12 = j_min_12; j12 <= j_max_12; j12++) {
                         if ((mj1 + mj2 > j12) || (mj1 + mj2 < -j12)) {continue;}
@@ -684,7 +683,7 @@ double trace_a4_nodes(sd_list* node1, int a, int b, int n_sds_int2, wfnData* wd,
     node1 = node1->next;
     if (ppf < 0) {
       ppf *= -1;
-      phase2 *= -1;
+      phase2 = -1;
     }
     wf_list* node2 = hash_i[ppi - 1];
     while (node2 != NULL) {
@@ -745,23 +744,22 @@ double trace_a22_nodes(sd_list* node1, int a, int b, int n_sds_int2, wfnData* wd
 double trace_a20_nodes(sd_list** p1_list_i, sd_list** n1_list_i, int* p1_list_f, int* n1_list_f, int a, int b, int c, int d, int n_sds_p_int1, int n_sds_n_int1, wfnData* wd, int psi_i, int psi_f) {
   double total = 0.0;
   int ns = wd->n_shells;
-  // Loop over final states resulting from 2x a_op
-  sd_list* node_pi = p1_list_i[b];
+  sd_list* node_pi = p1_list_i[b]; // Get proton states resulting from p_b |p_i>
   while (node_pi != NULL) {
     int ppi = node_pi->pi; 
-    int ppn = node_pi->pn; // Get pn = a| p_i>
+    int ppn = node_pi->pn; // Get pn = p_a |p_i>
     int phase1 = node_pi->phase;
     int phase2 = 1;
-    int ppf = p1_list_f[(ppn - 1) + n_sds_p_int1*a];
+    int ppf = p1_list_f[(ppn - 1) + n_sds_p_int1*a]; // Get pf such that pn = p_a |p_f>
     if (ppf == 0) {node_pi = node_pi->next; continue;}
     if (ppf < 0) {
       ppf *= -1;
       phase2 = -1;
     }
-    sd_list* node_ni = n1_list_i[d];
+    sd_list* node_ni = n1_list_i[d]; // Get neutron states resulting from n_d |n_i>
     while (node_ni != NULL) {
       int pni = node_ni->pi;
-      int pnn = node_ni->pn; // Get pn = a| p_i>
+      int pnn = node_ni->pn; // Get nn = n_d |n_i>
       int phase3 = node_ni->phase;
       int phase4 = 1;
       int pnf = n1_list_f[(pnn - 1) + n_sds_n_int1*c];

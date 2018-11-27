@@ -380,8 +380,9 @@ double compute_matrix_element_M_JF() {
   int i;
   for (i = 0; i < NUM_SHELLS; i++) {
     // Each line of the file corresponds to a nuclear shell
-    float density;
-    fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density);
+    double density;
+    fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density);
+
     // The angular momentum are doubled in the file
     double j1 = ij1/2.0;
     double j2 = ij2/2.0;
@@ -394,14 +395,14 @@ double compute_matrix_element_M_JF() {
     double m4 = 0.0;
     if (t12 != t12p) {continue;}
     if ((in1 == in1p) && (j1 == j1p) && (in2 == in2p) && (j2 == j2p)) {
-      m4 = 1.0;
+      m4 = nine_j(j1p, j1, 1, j2p, j2, 1, j12p, j12, 2);
     }
    
     if ((in1 == in2p) && (j1 == j2p) && (in2 == in1p) && (j2 == j1p)) {
-      m4 += pow(-1.0,  j1 + j2 + j12 + t12);
+      m4 += pow(-1.0,  j1 + j2 - j12 - t12)*nine_j(j1p, j2, 1, j2p, j1, 1, j12p, j12, 2);
     }
     if (m4 == 0) {continue;}
-    m4 *= sqrt(j1*(2*j1 + 1)*(j1 + 1))*sqrt(j2*(2*j2 + 1)*(j2 + 1))*nine_j(j1p, j1, 1, j2p, j2, 1, j12p, j12, 2);
+    m4 *= sqrt(j1*(2*j1 + 1)*(j1 + 1))*sqrt(j2*(2*j2 + 1)*(j2 + 1));
     m4 *= sqrt(2.0*j12 + 1.0)*sqrt(2*j12p + 1.0)*sqrt(5.0);
     
 //    if ((in1 == in2) && (j1 == j2)) {m4 *= 1.0/sqrt(2.0);}
