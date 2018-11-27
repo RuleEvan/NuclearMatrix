@@ -11,7 +11,7 @@ double triangle(double a, double b, double c) {
 }
 
 double clebsch_gordan(double j1, double j2, double j, double m1, double m2, double m) {
-//  printf("Calling CG: %g %g %g %g %g %g\n", j1, j2, j, m1, m2, m);
+//  printf("Calling CG: %g %g %g %g %g %g\n", j1, m1, j2, m2, j, m);
   // Computes the Clebsch-Gordan coefficients between the uncoupled basis (j1, m1, j2, m2) and
   // the coupled basis (j1,j2; j,m)
   double cg = 0.0;
@@ -81,8 +81,7 @@ double nine_j(double j11, double j12, double j13, double j21, double j22, double
   for (i = 0; i < 100; i++) {
     double k = i/2.0;
     nine_j += pow(-1.0, i)*(i + 1.0)*six_j(j11, j21, j31, j32, j33, k)*six_j(j12, j22, j32, j21, k, j23)*six_j(j13, j23, j33, k, j11, j12);
-  }
-  
+  } 
   return nine_j;
 }
 

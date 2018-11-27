@@ -86,12 +86,12 @@ void one_body_density(int j_op, int t_op) {
   printf("Done.\n");
  
   // Loop over initial eigenstates
-  for (int psi_i = 0; psi_i < 9; psi_i++) {
+  for (int psi_i = 1; psi_i < 2; psi_i++) {
     double ji = wd->j_nuc_i[psi_i];
     double ti = wd->t_nuc_i[psi_i];
     double mti = 0.5*(wd->n_proton_i - wd->n_neutron_i);
     // Loop over final eigenstates
-    for (int psi_f = 0; psi_f < 9; psi_f++) {
+    for (int psi_f = 1; psi_f < 2; psi_f++) {
       double cg_j = 0.0;
       double cg_t = 0.0;
       double jf = wd->j_nuc_f[psi_f];
@@ -257,8 +257,8 @@ void one_body_density(int j_op, int t_op) {
           }
           total /= cg_j*cg_t;
           if (total != 0.0) {
-            //printf("%d %d %d %d %d %d %g\n", wd->n_shell[i_orb1], wd->l_shell[i_orb1], wd->j_shell[i_orb1], wd->n_shell[i_orb2], wd->l_shell[i_orb2], wd->j_shell[i_orb2], total);
-            printf("%d %d %g\n", i_orb1 + 1, i_orb2 + 1, total);
+            printf("%d %d %g %d %d %g %g\n", wd->n_orb[i_orb1], wd->l_orb[i_orb1], wd->j_orb[i_orb1], wd->n_orb[i_orb2], wd->l_orb[i_orb2], wd->j_orb[i_orb2], total);
+          //  printf("%d %d %g\n", i_orb1 + 1, i_orb2 + 1, total);
           }
         }
       }
@@ -401,18 +401,19 @@ void two_body_density(int j_op, int t_op) {
 
     printf("Building initial state proton jumps...\n");
     for (int j = 1; j <= wd->n_sds_p_i; j++) {
-      for (int b = 0; b < ns; b++) {
+      int j_min = j_min_from_p(ns, wd->n_proton_i, j);
+      for (int b = j_min - 1; b < ns; b++) {
         int phase1;
-        int pn1 = a_op(ns, wd->n_proton_i, j, b + 1, &phase1, 1);
+        int pn1 = a_op(ns, wd->n_proton_i, j, b + 1, &phase1, j_min);
         if (pn1 == 0) {continue;}
         if (p1_list_i[b] == NULL) {
           p1_list_i[b] = create_sd_node(j, pn1, phase1, NULL);
         } else {
           sd_append(p1_list_i[b], j, pn1, phase1);
         }
-        for (int a = 0; a < b; a++) {
+        for (int a = j_min - 1; a < b; a++) {
           int phase2;
-          int pn2 = a_op(ns, wd->n_proton_i - 1, pn1, a + 1, &phase2, 1);
+          int pn2 = a_op(ns, wd->n_proton_i - 1, pn1, a + 1, &phase2, j_min);
           if (pn2 == 0) {continue;}
           if (p2_list_i[b + a*ns] == NULL) {
             p2_list_i[b + a*ns] = create_sd_node(j, pn2, phase1*phase2, NULL);
@@ -430,14 +431,15 @@ void two_body_density(int j_op, int t_op) {
     printf("Done.\n");
     printf("Building final state proton jumps...\n");  
     for (int j = 1; j <= wd->n_sds_p_f; j++) {
-      for (int b = 0; b < ns; b++) {
+      int j_min = j_min_from_p(ns, wd->n_proton_f, j);
+      for (int b = j_min - 1; b < ns; b++) {
         int phase1;
-        int pn1 = a_op(ns, wd->n_proton_f, j, b + 1, &phase1, 1);
+        int pn1 = a_op(ns, wd->n_proton_f, j, b + 1, &phase1, j_min);
         if (pn1 == 0) {continue;}
         p1_list_f[(pn1 - 1) + b*n_sds_p_int1] = j*phase1;
-        for (int a = 0; a < b; a++) {
+        for (int a = j_min - 1; a < b; a++) {
           int phase2;
-          int pn2 = a_op(ns, wd->n_proton_f - 1, pn1, a + 1, &phase2, 1);
+          int pn2 = a_op(ns, wd->n_proton_f - 1, pn1, a + 1, &phase2, j_min);
           if (pn2 == 0) {continue;}
           p2_list_f[(pn2 - 1) + n_sds_p_int2*(b + a*ns)] = phase1*phase2*j;
           p2_list_f[(pn2 - 1) + n_sds_p_int2*(a + b*ns)] = -phase1*phase2*j;
@@ -447,18 +449,19 @@ void two_body_density(int j_op, int t_op) {
     printf("Done.\n");
     printf("Building initial state neutron jumps...\n");
     for (int j = 1; j <= wd->n_sds_n_i; j++) {
-      for (int b = 0; b < ns; b++) {
+      int j_min = j_min_from_p(ns, wd->n_neutron_i, j);
+      for (int b = j_min - 1; b < ns; b++) {
         int phase1;
-        int pn1 = a_op(ns, wd->n_neutron_i, j, b + 1, &phase1, 1);
+        int pn1 = a_op(ns, wd->n_neutron_i, j, b + 1, &phase1, j_min);
         if (pn1 == 0) {continue;}
         if (n1_list_i[b] == NULL) {
           n1_list_i[b] = create_sd_node(j, pn1, phase1, NULL);
         } else {
           sd_append(n1_list_i[b], j, pn1, phase1);
         }
-        for (int a = 0; a < b; a++) {
+        for (int a = j_min - 1; a < b; a++) {
           int phase2;
-          int pn2 = a_op(ns, wd->n_neutron_i - 1, pn1, a + 1, &phase2, 1);
+          int pn2 = a_op(ns, wd->n_neutron_i - 1, pn1, a + 1, &phase2, j_min);
           if (pn2 == 0) {continue;}
           if (n2_list_i[b + a*ns] == NULL) {
             n2_list_i[b + a*ns] = create_sd_node(j, pn2, phase1*phase2, NULL);
@@ -475,16 +478,16 @@ void two_body_density(int j_op, int t_op) {
     }
     printf("Done.\n");
     printf("Building final state neutron jumps...\n");
-    // Create 1 and 2 particle lists
     for (int j = 1; j <= wd->n_sds_n_f; j++) {
-      for (int b = 0; b < ns; b++) {
+      int j_min = j_min_from_p(ns, wd->n_neutron_f, j);
+      for (int b = j_min - 1; b < ns; b++) {
         int phase1;
-        int pn1 = a_op(ns, wd->n_neutron_f, j, b + 1, &phase1, 1);
+        int pn1 = a_op(ns, wd->n_neutron_f, j, b + 1, &phase1, j_min);
         if (pn1 == 0) {continue;}
         n1_list_f[(pn1 - 1) + b*n_sds_n_int1] = j*phase1;
-        for (int a = 0; a < b; a++) {
+        for (int a = j_min - 1; a < b; a++) {
           int phase2;
-          int pn2 = a_op(ns, wd->n_neutron_f - 1, pn1, a + 1, &phase2, 1);
+          int pn2 = a_op(ns, wd->n_neutron_f - 1, pn1, a + 1, &phase2, j_min);
           if (pn2 == 0) {continue;}
           n2_list_f[(pn2 - 1) + n_sds_n_int2*(b + a*ns)] = phase1*phase2*j;
           n2_list_f[(pn2 - 1) + n_sds_n_int2*(a + b*ns)] = -phase1*phase2*j;
@@ -495,7 +498,7 @@ void two_body_density(int j_op, int t_op) {
   }
   FILE *out_file;
   out_file = fopen("ne-mg_fermi_density", "w"); 
-  for (int psi_i = 0; psi_i < 1; psi_i++) {
+  for (int psi_i = 75; psi_i < 76; psi_i++) {
     double ji = wd->j_nuc_i[psi_i];
     double ti = wd->t_nuc_i[psi_i];
     // Many-body states do not have mt = 0
@@ -514,9 +517,9 @@ void two_body_density(int j_op, int t_op) {
       if (cg_j == 0.0) {continue;}
       cg_t = clebsch_gordan(t_op, ti, tf, mt_op, mti, mtf);
       if (cg_t == 0.0) {continue;}
-      cg_j *= pow(-1.0, j_op + ji + jf)*sqrt(2*j_op + 1)/sqrt(2*jf + 1);
-      cg_t *= pow(-1.0, t_op + ti + tf)*sqrt(2*t_op + 1)/sqrt(2*tf + 1);
-      printf("Initial state: #%d J: %g T: %g Final State: #%d J: %g T: %g\n", psi_i + 1, ji, ti, psi_f + 1, jf, tf);
+      cg_j *= pow(-1.0, jf - ji)/sqrt(2*jf + 1);
+      cg_t *= pow(-1.0, tf - ti)/sqrt(2*tf + 1);
+      printf("Initial state: #%d J: %g T: %g MT: %g Final State: #%d J: %g T: %g MT: %g\n", psi_i + 1, ji, ti, mti, psi_f + 1, jf, tf, mtf);
       double mat_test = 0.0;
       // Loop over orbital a
       for (int i_orb1 = 0; i_orb1 < wd->n_orbits; i_orb1++) {
@@ -533,10 +536,10 @@ void two_body_density(int j_op, int t_op) {
               // Allocate storage for each j12 and j34
               int j_min_12 = abs(j1 - j2);
               int j_max_12 = j1 + j2;
-              int j_dim_12 = j_min_12 + j_max_12 + 1;
+              int j_dim_12 = j_max_12 - j_min_12 + 1;
               int j_min_34 = abs(j3 - j4);
               int j_max_34 = j3 + j4;
-              int j_dim_34 = j_min_34 + j_max_34 + 1;
+              int j_dim_34 = j_max_34 - j_min_34 + 1;
               int j_dim = j_dim_12*j_dim_34;
               j_store = realloc(j_store, sizeof(double)*4*j_dim);
               for (int k = 0; k < 4*j_dim; k++) {
@@ -605,27 +608,28 @@ void two_body_density(int j_op, int t_op) {
                       } else if ((mt1 == -0.5) && (mt2 == 0.5) && (mt3 == -0.5) && (mt4 == 0.5)) {
                           d1 = trace_a20_nodes(p1_list_i, n1_list_i, p1_list_f, n1_list_f, b, c, a, d, n_sds_p_int1, n_sds_n_int1, wd, psi_i, psi_f);
                       }
-                      for (int j12 = round(abs(j1 - j2)); j12 <= round(j1 + j2); j12++) {
+                      for (int j12 = j_min_12; j12 <= j_max_12; j12++) {
                         if ((mj1 + mj2 > j12) || (mj1 + mj2 < -j12)) {continue;}
                         double cg_j12 = clebsch_gordan(j1, j2, j12, mj1, mj2, mj1 + mj2);
                         if (cg_j12 == 0.0) {continue;}
                         for (int t12 = 0; t12 <= 1; t12++) {
                           if ((mt1 + mt2 > t12) || (mt1 + mt2 < -t12)) {continue;}
                           double cg_t12 = clebsch_gordan(0.5, 0.5, t12, mt1, mt2, mt1 + mt2);
-                          for (int j34 = round(fabs(j3 - j4)); j34 <= round(j3 + j4); j34++) {
+                          for (int j34 = j_min_34; j34 <= j_max_34; j34++) {
                             if ((mj3 + mj4 > j34) || (mj3 + mj4 < -j34)){continue;}
-                            double cg_j34 = clebsch_gordan(j3, j4, j34, -mj3, -mj4, -mj3 - mj4);
+                            double cg_j34 = clebsch_gordan(j4, j3, j34, mj4, mj3, mj3 + mj4);
                             if (cg_j34 == 0.0) {continue;}
-                            double cg_jop = clebsch_gordan(j12, j34, j_op, mj1 + mj2, -mj3 - mj4, 0);
+                            double cg_jop = clebsch_gordan(j_op, j34, j12, 0, mj3 + mj4, mj1 + mj2);
                             if (cg_jop == 0.0) {continue;}
                             for (int t34 = 0; t34 <= 1; t34++) {
                               if ((mt3 + mt4 > t34) || (mt3 + mt4 < -t34)) {continue;}
-                              double cg_t34 = clebsch_gordan(0.5, 0.5, t34, -mt3, -mt4, -mt3 - mt4);
+                              double cg_t34 = clebsch_gordan(0.5, 0.5, t34, mt4, mt3, mt3 + mt4);
                               if (cg_t34 == 0.0) {continue;}
-                              double cg_top = clebsch_gordan(t12, t34, t_op, mt1 + mt2, -mt3 - mt4, mt_op);
+                              double cg_top = clebsch_gordan(t_op, t34, t12, mt_op, mt3 + mt4, mt1 + mt2);
                               if (cg_top == 0.0) {continue;}
-                              double d2 = pow(-1.0, j3 + j4 + mj3 + mj4)*cg_j12*cg_j34*cg_jop;
-                              d2 *= pow(-1.0, 1 + mt3 + mt4)*cg_t12*cg_t34*cg_top;
+                              double d2 = cg_j12*cg_j34*cg_jop;
+                              d2 *= cg_t12*cg_t34*cg_top;
+                              d2 *= pow(-1.0, -j34 + j12 - t34 + t12)/sqrt((2*j12 + 1)*(2*t12 + 1));
                               if (d2 == 0.0) {continue;}
                               j_store[t12 + 2*(t34 + 2*((j12 - j_min_12)*j_dim_34 + (j34 - j_min_34)))] += d1*d2/(cg_j*cg_t);
                             }
@@ -642,12 +646,12 @@ void two_body_density(int j_op, int t_op) {
                   for (int ij12 = 0; ij12 < j_dim_12; ij12++) {
                     for (int ij34 = 0; ij34 < j_dim_34; ij34++) {
                       //if (fabs(j_store[t12 + 2*(t34 + 2*(j12*h_dim + j34))]) < pow(10, -6)) {j_store[t12 + 2*(t34 + 2*(j12*h_dim + j34))] = 0.0; continue;}
-                      if (fabs(j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]) > pow(10, -8)) {fprintf(out_file, "%d,%g,%d,%g,%d,%d,%d,%g,%d,%g,%d,%d,%g\n", 2*wd->n_orb[i_orb1], 2*wd->j_orb[i_orb1], 2*wd->n_orb[i_orb2], 2*wd->j_orb[i_orb2], 2*(ij12 + j_min_12), 2*t12, 2*wd->n_orb[i_orb4], 2*wd->j_orb[i_orb4], 2*wd->n_orb[i_orb3], 2*wd->j_orb[i_orb3], 2*(ij34 + j_min_34), 2*t34, j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]);}
+                      if (fabs(j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]) > pow(10, -16)) {fprintf(out_file, "%d,%g,%d,%g,%d,%d,%d,%g,%d,%g,%d,%d,%g\n", 2*wd->n_orb[i_orb1], 2*wd->j_orb[i_orb1], 2*wd->n_orb[i_orb2], 2*wd->j_orb[i_orb2], 2*(ij12 + j_min_12), 2*t12, 2*wd->n_orb[i_orb3], 2*wd->j_orb[i_orb3], 2*wd->n_orb[i_orb4], 2*wd->j_orb[i_orb4], 2*(ij34 + j_min_34), 2*t34, j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]);}
                       double d_mat = 0.0;
-                      if ((i_orb1 == i_orb3) && (i_orb2 == i_orb4)) {
+                      if ((i_orb1 == i_orb4) && (i_orb2 == i_orb3)) {
                         d_mat += pow(-1.0, j3 + j4 + j_min_12 + ij12 + t12)*j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]*sqrt(2*(j_min_12 + ij12) + 1)*sqrt(2*t12 + 1);
                       }
-                      if ((i_orb1 == i_orb4) && (i_orb2 == i_orb3)) {
+                      if ((i_orb1 == i_orb3) && (i_orb2 == i_orb4)) {
                         d_mat += j_store[t12 + 2*(t34 + 2*(ij12*j_dim_34 + ij34))]*sqrt(2*(j_min_12 + ij12) + 1)*sqrt(2*t12 + 1);
                       }
                       mat_test += d_mat;
@@ -659,7 +663,7 @@ void two_body_density(int j_op, int t_op) {
           }
         }
       }
-      printf("%g\n", -0.5*mat_test*0.5/(sqrt(2*tf + 1)*sqrt(2*jf + 1)));
+      printf("%g\n", 0.5*mat_test*0.5/(sqrt(2*tf + 1)*sqrt(2*jf + 1)));
     }
   } 
   free(j_store); 
@@ -769,8 +773,8 @@ double trace_a20_nodes(sd_list** p1_list_i, sd_list** n1_list_i, int* p1_list_f,
      // if (wd->m_list_pi[ppi] + wd->m_list_ni[pni] != 0) {node_ni = node_ni->next; continue;} // Loop over conjugate sectors
      // if (wd->m_list_pf[ppf] + wd->m_list_nf[pnf] != 0) {node_ni = node_ni->next; continue;}
       
-      wf_list *node_i = wd->p_hash_f[ppi - 1]; 
-      wf_list *node_f = wd->p_hash_i[ppf - 1];
+      wf_list *node_i = wd->p_hash_i[ppi - 1]; 
+      wf_list *node_f = wd->p_hash_f[ppf - 1];
       unsigned int index_i;
       unsigned int index_f;
       int found = 0;

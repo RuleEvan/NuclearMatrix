@@ -14,16 +14,16 @@
 
 // Isotope setup
 #define A_NUC 76 // Atomic Mass
-#define NUM_SHELLS 385
+#define NUM_SHELLS 114
 #define A_FACTOR 9.155 // [MeV] Average nuclear excitation energy
 #define B_OSC 0.8
 #define Z_ATOM 32 // Atomic Number
 
 // FILE SETUP
 #define DENSITY_FILE "ne-mg_fermi_density"
-#define WFN_FILE_INITIAL "ge76_basis.trwfn"
-#define WFN_FILE_FINAL "ge76_basis.trwfn"
-#define ORBIT_FILE "GCN2850.sps"
+#define WFN_FILE_INITIAL "ne20_basis.trwfn"
+#define WFN_FILE_FINAL "mg20_basis.trwfn"
+#define ORBIT_FILE "sd.sps"
 
 // Technical parameters
 #define R_SPL_MIN 0.0001
